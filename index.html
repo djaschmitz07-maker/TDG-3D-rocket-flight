@@ -31,6 +31,38 @@
             width: 100%;
             height: 100%;
         }
+        /* Top-Left Back to TD Gaming Button (Visible on Start & Game Over Screens) */
+        .back-site-btn {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(18, 22, 32, 0.85);
+            border: 1px solid rgba(0, 243, 255, 0.55);
+            color: #00f3ff;
+            text-decoration: none;
+            padding: 8px 14px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.25);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+            z-index: 25;
+            pointer-events: auto;
+        }
+        .back-site-btn:hover {
+            background: rgba(0, 243, 255, 0.2);
+            box-shadow: 0 0 18px rgba(0, 243, 255, 0.55);
+            transform: scale(1.04);
+        }
+        .back-site-btn:active {
+            transform: scale(0.96);
+        }
         /* Compact Top HUD Overlay */
         #hud {
             position: absolute;
@@ -268,6 +300,7 @@
 
     <!-- Start Screen -->
     <div id="start-screen" class="overlay-screen">
+        <a href="https://djaschmitz07-maker.github.io/TDGames/" class="back-site-btn">← TD Gaming</a>
         <h1>Lunar Run</h1>
         <p class="subtitle">Weave left and right across 30 distinct gray planetary regions—dodging clustered rock formations, canyon blockers, and shifting tectonic hazards up to 6.0x speed! Seek out ultra-rare offset ramps and energy shields with 3-second crash invulnerability.</p>
         <div class="controls-hint">
@@ -280,6 +313,7 @@
 
     <!-- Game Over Screen -->
     <div id="gameover-screen" class="overlay-screen hidden">
+        <a href="https://djaschmitz07-maker.github.io/TDGames/" class="back-site-btn">← TD Gaming</a>
         <h1>Hull Breached</h1>
         <p class="subtitle">Your starfighter crashed into planetary rock formations.</p>
         <div class="stats-summary">
@@ -1883,7 +1917,7 @@
 
     // Touching or clicking anywhere on the left half of the screen moves left; right half moves right
     container.addEventListener('touchstart', (e) => {
-        if (e.target.closest('button') || !state.isPlaying) return;
+        if (e.target.closest('button') || e.target.closest('a') || !state.isPlaying) return;
         const activeTouch = e.touches[e.touches.length - 1];
         if (activeTouch) {
             updateSteerFromScreenX(activeTouch.clientX);
@@ -1891,7 +1925,7 @@
     }, { passive: true });
 
     container.addEventListener('touchmove', (e) => {
-        if (e.target.closest('button') || !state.isPlaying) return;
+        if (e.target.closest('button') || e.target.closest('a') || !state.isPlaying) return;
         const activeTouch = e.touches[e.touches.length - 1];
         if (activeTouch) {
             updateSteerFromScreenX(activeTouch.clientX);
@@ -1911,7 +1945,7 @@
 
     let isMouseDownOnScreen = false;
     container.addEventListener('mousedown', (e) => {
-        if (e.target.closest('button') || !state.isPlaying) return;
+        if (e.target.closest('button') || e.target.closest('a') || !state.isPlaying) return;
         isMouseDownOnScreen = true;
         updateSteerFromScreenX(e.clientX);
     });
