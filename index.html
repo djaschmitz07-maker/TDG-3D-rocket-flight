@@ -1,0 +1,2273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Void: Planetary Canyon Dodger</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #161922;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ffffff;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        /* Compact Top HUD Overlay */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 8px 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
+            gap: 6px;
+            flex-wrap: nowrap;
+        }
+        .hud-box {
+            background: rgba(18, 22, 32, 0.78);
+            border: 1px solid rgba(0, 243, 255, 0.42);
+            border-radius: 8px;
+            padding: 4px 10px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.16);
+            transition: border-color 0.25s ease, box-shadow 0.25s ease;
+            text-align: center;
+            min-width: 0;
+        }
+        .hud-box.shield-active {
+            border-color: rgba(56, 189, 248, 0.95);
+            box-shadow: 0 0 14px rgba(0, 243, 255, 0.6);
+        }
+        .hud-box.shield-invuln {
+            border-color: rgba(250, 204, 21, 0.95);
+            box-shadow: 0 0 16px rgba(250, 204, 21, 0.65);
+        }
+        .hud-label {
+            font-size: 0.55rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #00f3ff;
+            margin-bottom: 1px;
+            line-height: 1.1;
+        }
+        .hud-value {
+            font-size: clamp(0.82rem, 2.6vw, 1.02rem);
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            text-shadow: 0 0 8px rgba(0, 243, 255, 0.5);
+            line-height: 1.15;
+            white-space: nowrap;
+        }
+        #sector-banner {
+            position: absolute;
+            top: 48px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(18, 22, 32, 0.85);
+            border: 1px solid rgba(0, 243, 255, 0.75);
+            color: #ffffff;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.35);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.35s ease;
+            z-index: 12;
+            white-space: nowrap;
+            max-width: 92vw;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* Menu & Game Over Screens */
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(25, 30, 45, 0.82) 0%, rgba(10, 12, 18, 0.94) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            z-index: 20;
+            transition: opacity 0.3s ease;
+        }
+        .hidden {
+            display: none !important;
+        }
+        h1 {
+            font-size: clamp(2.2rem, 6vw, 4rem);
+            font-weight: 900;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, #00f3ff, #e2e8f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 0 15px rgba(0, 243, 255, 0.4));
+        }
+        p.subtitle {
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            color: #cbd5e1;
+            max-width: 540px;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+        .controls-hint {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 35px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .key-badge {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #e0f7fa;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #00f3ff 0%, #0077ff 100%);
+            color: #050510;
+            border: none;
+            padding: 16px 42px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 0 25px rgba(0, 243, 255, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.6);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 35px rgba(0, 243, 255, 0.9), inset 0 2px 4px rgba(255, 255, 255, 0.8);
+        }
+        .btn-primary:active {
+            transform: scale(0.97);
+        }
+        .stats-summary {
+            background: rgba(15, 20, 32, 0.85);
+            border: 1px solid rgba(0, 243, 255, 0.4);
+            border-radius: 16px;
+            padding: 20px 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.2);
+        }
+        .stats-summary div {
+            margin: 8px 0;
+            font-size: 1.2rem;
+        }
+        .highlight-pink {
+            color: #ff007f;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+        /* Touch Controls for Mobile */
+        #touch-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 25px;
+            pointer-events: none;
+            z-index: 15;
+        }
+        .touch-btn {
+            width: 75px;
+            height: 75px;
+            border-radius: 50%;
+            background: rgba(0, 243, 255, 0.18);
+            border: 2px solid rgba(0, 243, 255, 0.55);
+            color: #00f3ff;
+            font-size: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            backdrop-filter: blur(4px);
+            touch-action: manipulation;
+        }
+        .touch-btn:active {
+            background: rgba(0, 243, 255, 0.45);
+            transform: scale(0.92);
+        }
+        @media (min-width: 769px) {
+            #touch-controls {
+                display: none;
+            }
+        }
+    </style>
+    <!-- Load Three.js from Cloudflare CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- Compact Top Heads Up Display -->
+    <div id="hud">
+        <div class="hud-box">
+            <div class="hud-label">Score</div>
+            <div class="hud-value" id="score-display">0</div>
+        </div>
+        <div class="hud-box">
+            <div class="hud-label">Region</div>
+            <div class="hud-value" id="sector-display">R-01</div>
+        </div>
+        <div class="hud-box" id="shield-hud-box">
+            <div class="hud-label">Shield</div>
+            <div class="hud-value" id="shield-display" style="color: #64748b; text-shadow: none;">OFF</div>
+        </div>
+        <div class="hud-box">
+            <div class="hud-label">Speed</div>
+            <div class="hud-value" id="speed-display">1.0x</div>
+        </div>
+        <div class="hud-box">
+            <div class="hud-label">Best</div>
+            <div class="hud-value" id="best-display">0</div>
+        </div>
+    </div>
+
+    <!-- Compact Sector Transition Banner -->
+    <div id="sector-banner">REGION 01: ASHEN PLAINS</div>
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="overlay-screen">
+        <h1>Lunar Run</h1>
+        <p class="subtitle">Weave left and right across 30 distinct gray planetary regions—dodging clustered rock formations, canyon blockers, and shifting tectonic hazards up to 6.0x speed! Seek out ultra-rare offset ramps and energy shields with 3-second crash invulnerability.</p>
+        <div class="controls-hint">
+            <span class="key-badge">⬅️ / ➡️ Tap Left or Right Side of Screen</span>
+            <span class="key-badge">🚀 Ultra-Rare Offset Ramps</span>
+            <span class="key-badge">🛡️ Shield + 3s Invulnerability</span>
+        </div>
+        <button class="btn-primary" id="start-btn">Launch Ship</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameover-screen" class="overlay-screen hidden">
+        <h1>Hull Breached</h1>
+        <p class="subtitle">Your starfighter crashed into planetary rock formations.</p>
+        <div class="stats-summary">
+            <div>Final Score: <span class="highlight-pink" id="final-score">0</span></div>
+            <div>Region Reached: <span style="color:#00f3ff; font-weight:bold;" id="final-sector">R-01</span></div>
+            <div>Top Speed: <span style="color:#00f3ff; font-weight:bold;" id="final-speed">1.0x</span></div>
+            <div>High Score: <span style="color:#ffd700; font-weight:bold;" id="final-best">0</span></div>
+        </div>
+        <button class="btn-primary" id="restart-btn">Fly Again</button>
+    </div>
+
+    <!-- Mobile Touch Buttons -->
+    <div id="touch-controls">
+        <button class="touch-btn" id="btn-left" aria-label="Move Left">◀</button>
+        <button class="touch-btn" id="btn-right" aria-label="Move Right">▶</button>
+    </div>
+</div>
+
+<script>
+    // --- Game Configuration & State ---
+    const CONFIG = {
+        spawnHorizon: 480,      // Focused horizontal spawn width so obstacles pack tightly into your active view
+        regionLength: 1150,     // Forward travel distance (in world Z units) per distinct planetary region
+        baseAltitude: 5.4,      // Elevated cruising altitude so the starfighter glides cleanly above uneven terrain
+        groundY: -1.65,         // Base planetary floor elevation
+        baseSpeed: 54,          // Initial forward speed (1.0x)
+        maxSpeed: 324,          // Maximum forward speed (54 * 6.0 = 6.0x)
+        fastAcceleration: 9.0,  // Reaches 3.0x speed (162) in ~12 seconds ((162 - 54) / 9.0 = 12s)
+        slowAcceleration: 2.25, // Gradual high-skill climb from 3.0x up to 6.0x
+        gravity: 34.0,          // Gravity pulling the starfighter back down after hitting a ramp
+        shipMaxStrafe: 64,      // Responsive peak Left/Right movement speed for high-speed weaving
+        shipAccel: 290,         // Crisp lateral thruster acceleration
+        shipDrag: 11.5,         // Smooth lateral damping when releasing controls
+        spawnDistance: -680,    // Spawn much farther out inside the horizon fog so objects emerge smoothly
+        despawnDistance: 120,   // Extended cleanup distance behind camera so 5x long ramps clear completely
+        baseSpawnInterval: 1.25 // Higher baseline spawn frequency for rich, clustered formations
+    };
+
+    // Unified Matte Medium-Gray Stone Color so ground, terrain bumps, and boulders match without bright white glare
+    const UNIFIED_STONE_COLOR = 0x676d77;
+
+    // 30 Distinct Procedurally Configured Forward Regions with heavily clustered rock formations, varied sizes, and selective moving hazards
+    const REGION_PREFIXES = [
+        "ASHEN", "NEEDLE", "TITAN", "CRATER", "OBSIDIAN",
+        "BASALT", "GRAVEL", "COLOSSUS", "SHATTERED", "SILENT",
+        "IRON", "PEBBLE", "MONOLITH", "DRIFT", "CANYON",
+        "APEX", "DUST", "FAULT", "PILLAR", "CRAG",
+        "SCORIA", "PLATEAU", "CHASM", "GRANITE", "TECTONIC",
+        "VORTEX", "SLATE", "SUMMIT", "RIFT", "OMEGA"
+    ];
+
+    const REGION_SUFFIXES = [
+        "PLAINS", "FOREST", "PLATEAU", "FIELDS", "CANYONS",
+        "WASTES", "EXPANSE", "GORGE", "BASIN", "RIDGE",
+        "VALLEY", "BADLANDS", "TERRACE", "PASS", "SECTOR",
+        "HIGHLANDS", "FRONTIER", "TRENCH", "ZONE", "SPIRES",
+        "LABYRINTH", "CORRIDOR", "OUTPOST", "DUNES", "REACH",
+        "BARRENS", "STEPPE", "CRAGS", "HORIZON", "VOID"
+    ];
+
+    const REGION_SKY_PALETTES = [
+        0x262f40, 0x2b273b, 0x22323d, 0x332d35, 0x202836,
+        0x28333a, 0x2f2b38, 0x1f2d38, 0x312832, 0x242c3c
+    ];
+
+    const STATIC_DESIGN_POOLS = [
+        ['spire', 'mesa', 'ridge', 'crag'],
+        ['needle', 'twinSpire', 'spire'],
+        ['steppedMesa', 'mesa', 'arch'],
+        ['crag', 'monolith', 'ridge'],
+        ['arch', 'monolith', 'twinSpire'],
+        ['crag', 'ridge'],
+        ['needle', 'monolith', 'steppedMesa'],
+        ['spire', 'arch', 'crag']
+    ];
+
+    const MOVING_DESIGN_POOLS = [
+        ['slidingMonolith'],
+        ['risingPillar'],
+        ['orbitingBoulder'],
+        ['slidingMonolith', 'risingPillar'],
+        ['risingPillar', 'orbitingBoulder']
+    ];
+
+    const PATTERN_TYPES = ["swarm", "cluster", "gauntlet", "slalom", "spires", "sparseGiants"];
+
+    // Build 30 distinct regions with heavily clustered formations in most regions and sharp contrast in size & density
+    const MAP_REGIONS = Array.from({ length: 30 }, (_, idx) => {
+        const h1 = Math.sin(idx * 12.9898 + 1.5) * 43758.5453;
+        const r1 = h1 - Math.floor(h1);
+        const h2 = Math.sin(idx * 78.233 + 3.1) * 29471.1327;
+        const r2 = h2 - Math.floor(h2);
+        const h3 = Math.sin(idx * 39.425 + 7.7) * 51823.7191;
+        const r3 = h3 - Math.floor(h3);
+
+        const archetype = idx % 5;
+        let sizeMin, sizeMax, densityMult, spawnRateMult, clusterCount, clusterSpread;
+
+        if (archetype === 0) {
+            sizeMin = 0.40 + r1 * 0.12;
+            sizeMax = 0.62 + r2 * 0.14;
+            densityMult = 2.45 + r3 * 0.55;
+            spawnRateMult = 1.65;
+            clusterCount = 4;
+            clusterSpread = 22;
+        } else if (archetype === 1) {
+            sizeMin = 0.68 + r1 * 0.16;
+            sizeMax = 0.96 + r2 * 0.18;
+            densityMult = 2.15 + r3 * 0.45;
+            spawnRateMult = 1.45;
+            clusterCount = 3;
+            clusterSpread = 28;
+        } else if (archetype === 2) {
+            sizeMin = 1.18 + r1 * 0.18;
+            sizeMax = 1.48 + r2 * 0.18;
+            densityMult = 1.35 + r3 * 0.30;
+            spawnRateMult = 1.10;
+            clusterCount = 2;
+            clusterSpread = 38;
+        } else if (archetype === 3) {
+            sizeMin = 0.52 + r1 * 0.15;
+            sizeMax = 0.84 + r2 * 0.16;
+            densityMult = 2.30 + r3 * 0.50;
+            spawnRateMult = 1.55;
+            clusterCount = 4;
+            clusterSpread = 25;
+        } else {
+            sizeMin = 1.38 + r1 * 0.16;
+            sizeMax = 1.68 + r2 * 0.16;
+            densityMult = 0.78 + r3 * 0.22;
+            spawnRateMult = 0.85;
+            clusterCount = 1;
+            clusterSpread = 45;
+        }
+
+        const hasMovingObstacles = (idx % 5 === 1 || idx % 7 === 3);
+        const staticPool = STATIC_DESIGN_POOLS[idx % STATIC_DESIGN_POOLS.length];
+        const movingPool = hasMovingObstacles ? MOVING_DESIGN_POOLS[idx % MOVING_DESIGN_POOLS.length] : [];
+
+        const skyHex = REGION_SKY_PALETTES[idx % REGION_SKY_PALETTES.length];
+        const prefix = REGION_PREFIXES[idx % REGION_PREFIXES.length];
+        const suffix = REGION_SUFFIXES[(idx * 7 + Math.floor(idx / 5)) % REGION_SUFFIXES.length];
+
+        return {
+            name: `${prefix} ${suffix}`,
+            sky: skyHex,
+            fog: skyHex,
+            groundColor: UNIFIED_STONE_COLOR,
+            designs: staticPool,
+            movingDesigns: movingPool,
+            hasMovingObstacles,
+            sizeMin,
+            sizeMax,
+            densityMult,
+            spawnRateMult,
+            clusterCount,
+            clusterSpread,
+            pattern: PATTERN_TYPES[(idx * 3 + Math.floor(r1 * 5)) % PATTERN_TYPES.length]
+        };
+    });
+
+    let state = {
+        isPlaying: false,
+        score: 0,
+        highScore: parseInt(localStorage.getItem('neonVoidHighScore')) || 0,
+        speed: CONFIG.baseSpeed,
+        worldDistanceZ: 0,      // Tracks exact forward distance traveled to lock ground & forward regions
+        spawnTimer: 0,
+        terrainSpawnTimer: 0,   // Keeps static ground terrain rocks of different sizes dense everywhere
+        waveCount: 0,
+        wavesSinceShield: 0,    // Tracks rarity cooldown for shield pickups
+        wavesSinceRamp: 0,      // Tracks rarity cooldown for launch ramps (5x rarer)
+        lastRampX: null,        // Tracks previous ramp X so consecutive ramps never spawn in a straight line
+        lastShieldX: null,      // Tracks previous shield X so pickups also require lateral steering
+        hasShield: false,       // True when energy shield bubble is active
+        shieldInvulnTimer: 0,   // 3.0 seconds of post-crash invulnerability after shield absorbs a hit
+        currentRegionNum: 0,    // Tracks which forward region the ship is currently flying through
+        moveLeft: false,
+        moveRight: false,
+        shipX: 0,
+        shipY: CONFIG.baseAltitude, // Vertical altitude in world Y (baseAltitude = normal flight height)
+        shipVelX: 0,
+        shipVelY: 0,            // Vertical launch velocity from ramps
+        shipRoll: 0,
+        shipPitch: 0,
+        isAirborne: false,
+        cameraLean: 0,
+        cameraShake: 0,
+        bannerTimeout: null,
+        corridorAnchorX: 0,
+        corridorSwingDir: 1     // Alternates left/right zigzag direction so paths never form long straight lines
+    };
+
+    // DOM Elements
+    const container = document.getElementById('game-container');
+    const scoreDisplay = document.getElementById('score-display');
+    const sectorDisplay = document.getElementById('sector-display');
+    const shieldHudBox = document.getElementById('shield-hud-box');
+    const shieldDisplay = document.getElementById('shield-display');
+    const speedDisplay = document.getElementById('speed-display');
+    const bestDisplay = document.getElementById('best-display');
+    const sectorBanner = document.getElementById('sector-banner');
+    const startScreen = document.getElementById('start-screen');
+    const gameoverScreen = document.getElementById('gameover-screen');
+    const finalScoreEl = document.getElementById('final-score');
+    const finalSectorEl = document.getElementById('final-sector');
+    const finalSpeedEl = document.getElementById('final-speed');
+    const finalBestEl = document.getElementById('final-best');
+
+    bestDisplay.textContent = state.highScore;
+
+    // --- Three.js Scene Setup (Optimized Renderer & Deep Horizon Fog) ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(MAP_REGIONS[0].sky);
+    scene.fog = new THREE.Fog(MAP_REGIONS[0].fog, 150, 670);
+
+    const camera = new THREE.PerspectiveCamera(64, window.innerWidth / window.innerHeight, 0.1, 850);
+    camera.rotation.order = 'YXZ';
+    camera.position.set(0, CONFIG.baseAltitude + 5.2, 11.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    container.appendChild(renderer.domElement);
+
+    // --- Planetary Lighting (Natural Sun + Sky Hemisphere, no blue ground light under ship) ---
+    const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x3b404c, 1.15);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff7ed, 1.35);
+    sunLight.position.set(60, 110, 40);
+    scene.add(sunLight);
+
+    // --- Unified Matte Gray Rocky Material (Shared by Ground, Static Terrain Bumps, & Boulders) ---
+    function createGrayStoneTexture() {
+        const size = 512;
+        const texCanvas = document.createElement('canvas');
+        texCanvas.width = size;
+        texCanvas.height = size;
+        const ctx = texCanvas.getContext('2d');
+
+        ctx.fillStyle = '#737984';
+        ctx.fillRect(0, 0, size, size);
+
+        // Multi-scale mineral grain & rocky speckle matching the faceted stone boulders
+        for (let i = 0; i < 6500; i++) {
+            const x = Math.random() * size;
+            const y = Math.random() * size;
+            const r = 1.0 + Math.random() * 4.2;
+            const shade = Math.random() > 0.45 ? 'rgba(205,212,224,0.09)' : 'rgba(28,32,40,0.16)';
+            ctx.fillStyle = shade;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Subtle stone fracture lines
+        for (let c = 0; c < 28; c++) {
+            const cx = Math.random() * size;
+            const cy = Math.random() * size;
+            const cr = 12 + Math.random() * 28;
+            ctx.strokeStyle = 'rgba(32, 37, 46, 0.18)';
+            ctx.lineWidth = 2.0;
+            ctx.beginPath();
+            ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        const texture = new THREE.CanvasTexture(texCanvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(2400 / 40, 1900 / 40);
+        return texture;
+    }
+
+    // --- Static Multi-Size Planetary Ground Elevation (Different sizes everywhere, never morphing in place) ---
+    function sampleGroundHeight(wx, wz) {
+        const broadFeatures =
+            Math.sin(wx * 0.012 + wz * 0.010) * 1.15 +
+            Math.cos(wx * 0.021 - wz * 0.016) * 0.90;
+
+        const mediumMounds =
+            Math.sin(wx * 0.045 - wz * 0.039) * 0.52 +
+            Math.cos(wx * 0.062 + wz * 0.055) * 0.40;
+
+        const variedBumps =
+            Math.sin(wx * 0.15 + Math.cos(wz * 0.14) * 1.8) *
+            Math.cos(wz * 0.17 + Math.sin(wx * 0.13) * 1.6) * 0.34;
+
+        return CONFIG.groundY + broadFeatures + mediumMounds + variedBumps;
+    }
+
+    const GROUND_TILE_WORLD_SIZE = 40;
+    const groundTexture = createGrayStoneTexture();
+
+    // Shared flat-shaded gray stone material so ground and boulders share the exact same rocky tone
+    const unifiedStoneMaterial = new THREE.MeshStandardMaterial({
+        map: groundTexture,
+        color: UNIFIED_STONE_COLOR,
+        roughness: 0.93,
+        metalness: 0.05,
+        flatShading: true
+    });
+
+    const groundGeo = new THREE.PlaneGeometry(2400, 1900, 105, 82);
+    groundGeo.rotateX(-Math.PI / 2);
+
+    const groundPlane = new THREE.Mesh(groundGeo, unifiedStoneMaterial);
+    groundPlane.position.set(0, 0, -650);
+    scene.add(groundPlane);
+
+    function syncGroundVerticesToWorld() {
+        const pos = groundGeo.attributes.position;
+        const arr = pos.array;
+        const baseX = groundPlane.position.x;
+        const baseZ = groundPlane.position.z;
+        const travelZ = state.worldDistanceZ;
+
+        for (let i = 0; i < arr.length; i += 3) {
+            const worldX = baseX + arr[i];
+            const worldZ = baseZ + arr[i + 2] - travelZ;
+            arr[i + 1] = sampleGroundHeight(worldX, worldZ);
+        }
+        pos.needsUpdate = true;
+        groundGeo.computeVertexNormals();
+    }
+
+    syncGroundVerticesToWorld();
+
+    // --- Distant Planetary Sky Elements ---
+    const skyGroup = new THREE.Group();
+    const planetGeo = new THREE.SphereGeometry(42, 28, 28);
+    const planetMat = new THREE.MeshStandardMaterial({
+        color: 0x8b93a1,
+        roughness: 0.75,
+        metalness: 0.1,
+        fog: false
+    });
+    const distantPlanet = new THREE.Mesh(planetGeo, planetMat);
+    distantPlanet.position.set(-150, 135, -680);
+    skyGroup.add(distantPlanet);
+
+    const ringGeo = new THREE.RingGeometry(55, 74, 42);
+    ringGeo.rotateX(Math.PI / 2.4);
+    ringGeo.rotateY(0.25);
+    const ringMat = new THREE.MeshBasicMaterial({
+        color: 0x9aa2b0,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.3,
+        fog: false
+    });
+    const planetRing = new THREE.Mesh(ringGeo, ringMat);
+    planetRing.position.copy(distantPlanet.position);
+    skyGroup.add(planetRing);
+
+    const starCount = 1000;
+    const starGeo = new THREE.BufferGeometry();
+    const starPositions = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount * 3; i += 3) {
+        starPositions[i] = (Math.random() - 0.5) * 1500;
+        starPositions[i + 1] = 80 + Math.random() * 260;
+        starPositions[i + 2] = -200 - Math.random() * 520;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const starMat = new THREE.PointsMaterial({ color: 0xe2e8f0, size: 0.9, transparent: true, opacity: 0.75, fog: false });
+    const starField = new THREE.Points(starGeo, starMat);
+    skyGroup.add(starField);
+    scene.add(skyGroup);
+
+    // --- Detailed Multi-Part Starfighter Construction ---
+    const shipGroup = new THREE.Group();
+    shipGroup.rotation.order = 'YXZ';
+
+    const hullPrimaryMat = new THREE.MeshStandardMaterial({
+        color: 0xe2e8f0,
+        metalness: 0.72,
+        roughness: 0.24
+    });
+    const hullSecondaryMat = new THREE.MeshStandardMaterial({
+        color: 0x334155,
+        metalness: 0.82,
+        roughness: 0.32
+    });
+    const accentStripeMat = new THREE.MeshStandardMaterial({
+        color: 0x0284c7,
+        emissive: 0x0369a1,
+        emissiveIntensity: 0.35,
+        metalness: 0.65,
+        roughness: 0.25
+    });
+    const neonTrimMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
+    const darkNozzleMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        metalness: 0.9,
+        roughness: 0.25
+    });
+    const canopyGlassMat = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        emissive: 0x00a8cc,
+        emissiveIntensity: 0.45,
+        metalness: 0.95,
+        roughness: 0.08
+    });
+
+    // 1. Sculpted Main Fuselage & Nose Cone
+    const mainHullGeo = new THREE.BoxGeometry(0.95, 0.44, 2.5);
+    const mainHull = new THREE.Mesh(mainHullGeo, hullPrimaryMat);
+    mainHull.position.set(0, 0.02, 0.15);
+    shipGroup.add(mainHull);
+
+    const noseGeo = new THREE.ConeGeometry(0.48, 1.65, 4);
+    noseGeo.rotateY(Math.PI / 4);
+    noseGeo.rotateX(-Math.PI / 2);
+    noseGeo.scale(1.15, 0.55, 1.0);
+    const noseCone = new THREE.Mesh(noseGeo, hullPrimaryMat);
+    noseCone.position.set(0, 0.0, -1.85);
+    shipGroup.add(noseCone);
+
+    const probeGeo = new THREE.CylinderGeometry(0.015, 0.04, 0.55, 6);
+    probeGeo.rotateX(-Math.PI / 2);
+    const noseProbe = new THREE.Mesh(probeGeo, hullSecondaryMat);
+    noseProbe.position.set(0, -0.02, -2.85);
+    shipGroup.add(noseProbe);
+
+    // 2. Dorsal Spine Ridge & Ventral Chin Armor
+    const spineGeo = new THREE.BoxGeometry(0.42, 0.22, 1.85);
+    const dorsalSpine = new THREE.Mesh(spineGeo, hullSecondaryMat);
+    dorsalSpine.position.set(0, 0.26, 0.45);
+    shipGroup.add(dorsalSpine);
+
+    const spineLightGeo = new THREE.BoxGeometry(0.12, 0.05, 1.5);
+    const spineLight = new THREE.Mesh(spineLightGeo, neonTrimMat);
+    spineLight.position.set(0, 0.38, 0.45);
+    shipGroup.add(spineLight);
+
+    const chinGeo = new THREE.BoxGeometry(0.65, 0.18, 2.2);
+    const ventralChin = new THREE.Mesh(chinGeo, hullSecondaryMat);
+    ventralChin.position.set(0, -0.22, 0.05);
+    shipGroup.add(ventralChin);
+
+    // 3. Framed Bubble Cockpit Canopy
+    const canopyGeo = new THREE.SphereGeometry(0.42, 16, 14);
+    canopyGeo.scale(0.88, 0.65, 2.05);
+    const canopy = new THREE.Mesh(canopyGeo, canopyGlassMat);
+    canopy.position.set(0, 0.30, -0.35);
+    shipGroup.add(canopy);
+
+    const canopyFrameGeo = new THREE.TorusGeometry(0.36, 0.035, 8, 16, Math.PI);
+    canopyFrameGeo.scale(0.95, 0.72, 1.0);
+    const canopyFrame = new THREE.Mesh(canopyFrameGeo, hullSecondaryMat);
+    canopyFrame.position.set(0, 0.25, -0.28);
+    shipGroup.add(canopyFrame);
+
+    // 4. Twin Forward Side Air Intakes & Nacelle Cowlings
+    [-1, 1].forEach((side) => {
+        const intakeBodyGeo = new THREE.BoxGeometry(0.44, 0.36, 1.85);
+        const intakeBody = new THREE.Mesh(intakeBodyGeo, hullSecondaryMat);
+        intakeBody.position.set(side * 0.66, -0.02, 0.25);
+        shipGroup.add(intakeBody);
+
+        const scoopGeo = new THREE.BoxGeometry(0.46, 0.38, 0.22);
+        const scoop = new THREE.Mesh(scoopGeo, accentStripeMat);
+        scoop.rotation.x = 0.25;
+        scoop.position.set(side * 0.66, -0.01, -0.68);
+        shipGroup.add(scoop);
+
+        const intakeGlowGeo = new THREE.PlaneGeometry(0.30, 0.22);
+        const intakeGlow = new THREE.Mesh(intakeGlowGeo, neonTrimMat);
+        intakeGlow.position.set(side * 0.66, -0.01, -0.80);
+        intakeGlow.rotation.y = Math.PI;
+        shipGroup.add(intakeGlow);
+    });
+
+    // 5. Swept Delta Wings, Leading Edge Slats, Laser Pods & Animated Aileron Flaps
+    const wingShape = new THREE.Shape();
+    wingShape.moveTo(0, 0.85);
+    wingShape.lineTo(1.75, -0.65);
+    wingShape.lineTo(1.75, -1.05);
+    wingShape.lineTo(0, -0.95);
+    wingShape.closePath();
+
+    const wingExtrudeGeo = new THREE.ExtrudeGeometry(wingShape, {
+        depth: 0.08,
+        bevelEnabled: true,
+        bevelThickness: 0.02,
+        bevelSize: 0.03,
+        bevelSegments: 2
+    });
+    wingExtrudeGeo.rotateX(Math.PI / 2);
+
+    const aileronFlaps = [];
+    [-1, 1].forEach((side) => {
+        const wing = new THREE.Mesh(wingExtrudeGeo, hullPrimaryMat);
+        wing.scale.set(side, 1, 1);
+        wing.position.set(side * 0.68, 0.02, 0.45);
+        shipGroup.add(wing);
+
+        const stripeGeo = new THREE.BoxGeometry(1.15, 0.11, 0.32);
+        const stripe = new THREE.Mesh(stripeGeo, accentStripeMat);
+        stripe.rotation.y = side * -0.45;
+        stripe.position.set(side * 1.45, 0.0, 0.62);
+        shipGroup.add(stripe);
+
+        const flapGeo = new THREE.BoxGeometry(0.95, 0.06, 0.24);
+        const flap = new THREE.Mesh(flapGeo, hullSecondaryMat);
+        flap.position.set(side * 1.48, -0.01, 1.38);
+        flap.userData.side = side;
+        shipGroup.add(flap);
+        aileronFlaps.push(flap);
+
+        const podGeo = new THREE.CylinderGeometry(0.07, 0.09, 1.35, 8);
+        podGeo.rotateX(Math.PI / 2);
+        const wingPod = new THREE.Mesh(podGeo, hullSecondaryMat);
+        wingPod.position.set(side * 2.42, 0.0, 0.92);
+        shipGroup.add(wingPod);
+
+        const barrelGeo = new THREE.CylinderGeometry(0.025, 0.035, 0.55, 6);
+        barrelGeo.rotateX(Math.PI / 2);
+        const barrel = new THREE.Mesh(barrelGeo, accentStripeMat);
+        barrel.position.set(side * 2.42, 0.0, 0.08);
+        shipGroup.add(barrel);
+
+        const navColor = side === -1 ? 0xff2a6d : 0x00f3ff;
+        const navMat = new THREE.MeshBasicMaterial({ color: navColor });
+        const navLight = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 8), navMat);
+        navLight.position.set(side * 2.42, 0.08, 0.92);
+        shipGroup.add(navLight);
+
+        const tailShape = new THREE.Shape();
+        tailShape.moveTo(0, 0);
+        tailShape.lineTo(0.85, 0);
+        tailShape.lineTo(0.35, 0.85);
+        tailShape.lineTo(-0.15, 0.85);
+        tailShape.closePath();
+
+        const tailGeo = new THREE.ExtrudeGeometry(tailShape, {
+            depth: 0.05,
+            bevelEnabled: true,
+            bevelThickness: 0.01,
+            bevelSize: 0.015,
+            bevelSegments: 1
+        });
+        tailGeo.rotateY(Math.PI / 2);
+
+        const tailFin = new THREE.Mesh(tailGeo, hullPrimaryMat);
+        tailFin.position.set(side * 0.56, 0.16, 1.48);
+        tailFin.rotation.z = side * -0.28;
+        shipGroup.add(tailFin);
+
+        const tailTipGeo = new THREE.BoxGeometry(0.07, 0.14, 0.52);
+        const tailTip = new THREE.Mesh(tailTipGeo, accentStripeMat);
+        tailTip.position.set(side * 0.78, 0.96, 1.24);
+        tailTip.rotation.z = side * -0.28;
+        shipGroup.add(tailTip);
+    });
+
+    // 6. Dual Rear Thruster Nozzles with Outer Afterburner Cones & Inner Plasma Cores
+    const engineFlames = [];
+    const plasmaCores = [];
+    [-0.36, 0.36].forEach((offsetX) => {
+        const nozzleGeo = new THREE.CylinderGeometry(0.24, 0.28, 0.36, 12);
+        nozzleGeo.rotateX(Math.PI / 2);
+        const nozzle = new THREE.Mesh(nozzleGeo, darkNozzleMat);
+        nozzle.position.set(offsetX, -0.01, 1.52);
+        shipGroup.add(nozzle);
+
+        const rimGeo = new THREE.TorusGeometry(0.23, 0.025, 8, 16);
+        const rim = new THREE.Mesh(rimGeo, neonTrimMat);
+        rim.position.set(offsetX, -0.01, 1.69);
+        shipGroup.add(rim);
+
+        const outerFlameGeo = new THREE.ConeGeometry(0.21, 1.15, 10);
+        outerFlameGeo.rotateX(Math.PI / 2);
+        outerFlameGeo.translate(0, 0, 0.55);
+        const outerFlameMat = new THREE.MeshBasicMaterial({
+            color: 0x00f3ff,
+            transparent: true,
+            opacity: 0.85
+        });
+        const outerFlame = new THREE.Mesh(outerFlameGeo, outerFlameMat);
+        outerFlame.position.set(offsetX, -0.01, 1.68);
+        shipGroup.add(outerFlame);
+        engineFlames.push(outerFlame);
+
+        const coreFlameGeo = new THREE.ConeGeometry(0.11, 0.72, 8);
+        coreFlameGeo.rotateX(Math.PI / 2);
+        coreFlameGeo.translate(0, 0, 0.35);
+        const coreFlameMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const coreFlame = new THREE.Mesh(coreFlameGeo, coreFlameMat);
+        coreFlame.position.set(offsetX, -0.01, 1.68);
+        shipGroup.add(coreFlame);
+        plasmaCores.push(coreFlame);
+    });
+
+    const shipEdgeMat = new THREE.LineBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.28 });
+    [mainHull, noseCone, dorsalSpine].forEach((part) => {
+        const edges = new THREE.EdgesGeometry(part.geometry, 25);
+        part.add(new THREE.LineSegments(edges, shipEdgeMat));
+    });
+
+    // 7. Protective Energy Shield Bubble Around the Starfighter (Supports both active shield & 3s post-crash invulnerability)
+    const shieldBubbleGeo = new THREE.SphereGeometry(2.9, 24, 18);
+    shieldBubbleGeo.scale(1.05, 0.52, 1.25);
+    const shieldBubbleMat = new THREE.MeshBasicMaterial({
+        color: 0x00f3ff,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false
+    });
+    const shieldBubble = new THREE.Mesh(shieldBubbleGeo, shieldBubbleMat);
+    const shieldWireGeo = new THREE.EdgesGeometry(shieldBubbleGeo, 12);
+    const shieldWireMat = new THREE.LineBasicMaterial({
+        color: 0x7dd3fc,
+        transparent: true,
+        opacity: 0.48
+    });
+    shieldBubble.add(new THREE.LineSegments(shieldWireGeo, shieldWireMat));
+    shieldBubble.visible = false;
+    shipGroup.add(shieldBubble);
+
+    const shadowGeo = new THREE.CircleGeometry(2.2, 22);
+    shadowGeo.rotateX(-Math.PI / 2);
+    const shadowMat = new THREE.MeshBasicMaterial({
+        color: 0x0f1218,
+        transparent: true,
+        opacity: 0.38
+    });
+    const shipGroundShadow = new THREE.Mesh(shadowGeo, shadowMat);
+    shipGroundShadow.position.set(0, sampleGroundHeight(0, 2) + 0.08, 2);
+    scene.add(shipGroundShadow);
+
+    shipGroup.position.set(0, CONFIG.baseAltitude, 2);
+    scene.add(shipGroup);
+
+    // --- Shared Cached Geometries for High-FPS Smooth Rendering ---
+    const CACHED_GROUND_SHAPES = {
+        mound: new THREE.ConeGeometry(6.5, 1.4, 7, 1),
+        terrace: new THREE.CylinderGeometry(5.0, 7.2, 1.5, 6, 1),
+        slab: new THREE.BoxGeometry(9.5, 1.4, 4.8, 2, 1, 1),
+        boulder: new THREE.DodecahedronGeometry(1.6, 0)
+    };
+
+    const CACHED_OBSTACLE_SHAPES = {
+        spire: roughenGeometry(new THREE.ConeGeometry(2.9, 16.5, 7, 2), 1.55, 1.7, 1.55),
+        needle: roughenGeometry(new THREE.ConeGeometry(2.0, 22.0, 5, 3), 1.15, 2.0, 1.15),
+        mesa: roughenGeometry(new THREE.CylinderGeometry(2.7, 4.1, 12.0, 7, 2), 1.45, 1.0, 1.45),
+        ridge: roughenGeometry(new THREE.BoxGeometry(8.2, 6.0, 4.0, 2, 2, 1), 1.7, 1.85, 1.4),
+        monolith: roughenGeometry(new THREE.BoxGeometry(3.3, 16.5, 3.0, 2, 3, 2), 1.25, 1.4, 1.25),
+        crag: roughenGeometry(new THREE.DodecahedronGeometry(4.1, 1), 1.35, 1.45, 1.35),
+        slidingMonolith: roughenGeometry(new THREE.BoxGeometry(3.9, 15.5, 3.4, 2, 3, 2), 1.3, 1.35, 1.3),
+        risingPillar: roughenGeometry(new THREE.CylinderGeometry(2.6, 3.6, 16.5, 7, 2), 1.25, 1.25, 1.25),
+        orbitingBoulder: roughenGeometry(new THREE.DodecahedronGeometry(3.7, 1), 1.2, 1.2, 1.2)
+    };
+
+    const CACHED_OBSTACLE_EDGES = {};
+    Object.keys(CACHED_OBSTACLE_SHAPES).forEach((key) => {
+        CACHED_OBSTACLE_EDGES[key] = new THREE.EdgesGeometry(CACHED_OBSTACLE_SHAPES[key], 24);
+    });
+
+    const SHARED_CONTACT_SHADOW_GEO = new THREE.CircleGeometry(1.0, 16);
+    SHARED_CONTACT_SHADOW_GEO.rotateX(-Math.PI / 2);
+
+    function disposeMeshGroup(obj) {
+        obj.traverse((child) => {
+            if (child.userData && child.userData.customGeo && child.geometry) {
+                child.geometry.dispose();
+            }
+        });
+    }
+
+    // --- Static Multi-Sized Gray Ground Rocks & Bumps Everywhere (Cached geometries for 60fps smoothness) ---
+    let groundTerrainDetails = [];
+
+    function spawnGroundTerrainCluster(zBase) {
+        const centerX = state.shipX;
+        const count = 14 + Math.floor(Math.random() * 5);
+
+        for (let i = 0; i < count; i++) {
+            const x = centerX + (Math.random() * 2 - 1) * (CONFIG.spawnHorizon + 120);
+            const z = zBase + (Math.random() - 0.5) * 65;
+            const localGroundY = sampleGroundHeight(x, z - state.worldDistanceZ);
+            const sizeVariety = 0.4 + Math.pow(Math.random(), 1.35) * 2.2;
+            const kindRoll = Math.random();
+
+            if (kindRoll < 0.28) {
+                const mesh = new THREE.Mesh(CACHED_GROUND_SHAPES.mound, unifiedStoneMaterial);
+                mesh.scale.set(sizeVariety, sizeVariety * (0.8 + Math.random() * 0.5), sizeVariety);
+                mesh.rotation.y = Math.random() * Math.PI * 2;
+                mesh.position.set(x, localGroundY + 0.35 * sizeVariety, z);
+                scene.add(mesh);
+                groundTerrainDetails.push(mesh);
+
+            } else if (kindRoll < 0.54) {
+                const mesh = new THREE.Mesh(CACHED_GROUND_SHAPES.terrace, unifiedStoneMaterial);
+                mesh.scale.set(sizeVariety, sizeVariety * (0.8 + Math.random() * 0.5), sizeVariety);
+                mesh.rotation.y = Math.random() * Math.PI * 2;
+                mesh.position.set(x, localGroundY + 0.4 * sizeVariety, z);
+                scene.add(mesh);
+                groundTerrainDetails.push(mesh);
+
+            } else if (kindRoll < 0.78) {
+                const mesh = new THREE.Mesh(CACHED_GROUND_SHAPES.slab, unifiedStoneMaterial);
+                mesh.scale.set(sizeVariety, sizeVariety * (0.8 + Math.random() * 0.5), sizeVariety);
+                mesh.rotation.y = (Math.random() - 0.5) * 1.5;
+                mesh.position.set(x, localGroundY + 0.35 * sizeVariety, z);
+                scene.add(mesh);
+                groundTerrainDetails.push(mesh);
+
+            } else {
+                const cluster = new THREE.Group();
+                const subRocks = 2 + Math.floor(Math.random() * 3);
+                for (let b = 0; b < subRocks; b++) {
+                    const r = (0.65 + Math.random() * 1.5) * sizeVariety;
+                    const rock = new THREE.Mesh(CACHED_GROUND_SHAPES.boulder, unifiedStoneMaterial);
+                    rock.scale.set(r * 1.15, r * 0.72, r * 1.05);
+                    rock.position.set((Math.random() - 0.5) * 7 * sizeVariety, r * 0.45, (Math.random() - 0.5) * 7 * sizeVariety);
+                    rock.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.4);
+                    cluster.add(rock);
+                }
+                cluster.position.set(x, localGroundY, z);
+                scene.add(cluster);
+                groundTerrainDetails.push(cluster);
+            }
+        }
+    }
+
+    function clearGroundTerrainDetails() {
+        for (let t of groundTerrainDetails) {
+            scene.remove(t);
+        }
+        groundTerrainDetails = [];
+    }
+
+    // --- Massive 5x Wide Forward-Facing Planetary Launch Ramps (Ultra-Rare & Offset Laterally) ---
+    let launchRamps = [];
+    const rampBodyMat = new THREE.MeshStandardMaterial({
+        color: 0x3f4552,
+        roughness: 0.78,
+        metalness: 0.28,
+        flatShading: true
+    });
+    const rampEdgeMat = new THREE.LineBasicMaterial({ color: 0x00f3ff, transparent: true, opacity: 0.8 });
+    const rampChevronMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
+    const rampSideRailMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+
+    function createLaunchRamp(x, z) {
+        const rampGroup = new THREE.Group();
+        const rampWidth = 44.0;
+        const rampLength = 120.0;
+        const rampBaseToCruise = CONFIG.baseAltitude - CONFIG.groundY;
+        const rampLaunchRise = 18.0;
+        const rampTotalHeight = rampBaseToCruise + rampLaunchRise;
+
+        const wedgeShape = new THREE.Shape();
+        wedgeShape.moveTo(0, -1.5);
+        wedgeShape.lineTo(rampLength, -1.5);
+        wedgeShape.lineTo(rampLength, rampTotalHeight);
+        wedgeShape.lineTo(0, 0);
+        wedgeShape.closePath();
+
+        const wedgeGeo = new THREE.ExtrudeGeometry(wedgeShape, {
+            depth: rampWidth,
+            bevelEnabled: false
+        });
+        wedgeGeo.rotateY(Math.PI / 2);
+        wedgeGeo.translate(-rampWidth / 2, 0, rampLength / 2);
+
+        const wedgeMesh = new THREE.Mesh(wedgeGeo, rampBodyMat);
+        wedgeMesh.userData.customGeo = true;
+        const wedgeEdges = new THREE.EdgesGeometry(wedgeGeo, 15);
+        const edgeSegs = new THREE.LineSegments(wedgeEdges, rampEdgeMat);
+        edgeSegs.userData.customGeo = true;
+        wedgeMesh.add(edgeSegs);
+        rampGroup.add(wedgeMesh);
+
+        const slopeAngle = Math.atan2(rampTotalHeight, rampLength);
+        const slopeLen = Math.hypot(rampLength, rampTotalHeight);
+
+        for (let s = 0; s < 6; s++) {
+            const frac = 0.22 + s * 0.13;
+            const stripGeo = new THREE.BoxGeometry(rampWidth * 0.78, 0.25, 2.4);
+            const strip = new THREE.Mesh(stripGeo, rampChevronMat);
+            strip.userData.customGeo = true;
+            strip.rotation.x = slopeAngle;
+            strip.position.set(
+                0,
+                frac * rampTotalHeight + 0.14,
+                (0.5 - frac) * rampLength
+            );
+            rampGroup.add(strip);
+        }
+
+        [-1, 1].forEach((side) => {
+            const railGeo = new THREE.BoxGeometry(0.65, 0.65, slopeLen);
+            const rail = new THREE.Mesh(railGeo, rampSideRailMat);
+            rail.userData.customGeo = true;
+            rail.rotation.x = slopeAngle;
+            rail.position.set(side * (rampWidth / 2), rampTotalHeight / 2 + 0.25, 0);
+            rampGroup.add(rail);
+        });
+
+        rampGroup.position.set(x, CONFIG.groundY, z);
+        rampGroup.userData.halfWidth = rampWidth * 0.54;
+        rampGroup.userData.halfLength = rampLength * 0.50;
+        rampGroup.userData.rampTotalHeight = rampTotalHeight;
+        rampGroup.userData.triggered = false;
+
+        scene.add(rampGroup);
+        launchRamps.push(rampGroup);
+        state.lastRampX = x;
+    }
+
+    function clearLaunchRamps() {
+        for (let r of launchRamps) {
+            disposeMeshGroup(r);
+            scene.remove(r);
+        }
+        launchRamps = [];
+    }
+
+    // --- Rare Collectible Energy Shield Pickups (Enlarged & Wider Grab Radius for Easy Collection) ---
+    let shieldPickups = [];
+    const pickupCoreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const pickupShellMat = new THREE.MeshBasicMaterial({
+        color: 0x00f3ff,
+        transparent: true,
+        opacity: 0.45
+    });
+    const pickupRingMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+    const pickupShadowMat = new THREE.MeshBasicMaterial({
+        color: 0x00f3ff,
+        transparent: true,
+        opacity: 0.42
+    });
+
+    const SHARED_PICKUP_CORE_GEO = new THREE.OctahedronGeometry(1.55, 0);
+    const SHARED_PICKUP_SHELL_GEO = new THREE.SphereGeometry(2.85, 16, 14);
+    const SHARED_PICKUP_RING1_GEO = new THREE.TorusGeometry(3.45, 0.18, 8, 24);
+    const SHARED_PICKUP_RING2_GEO = new THREE.TorusGeometry(3.95, 0.14, 8, 24);
+    const SHARED_PICKUP_BEACON_GEO = new THREE.RingGeometry(2.6, 4.2, 20);
+    SHARED_PICKUP_BEACON_GEO.rotateX(-Math.PI / 2);
+
+    function setShieldActive(active) {
+        state.hasShield = active;
+        updateShieldVisualAndHUD();
+    }
+
+    function updateShieldVisualAndHUD() {
+        if (state.shieldInvulnTimer > 0) {
+            shieldBubble.visible = true;
+            shieldBubbleMat.color.setHex(0xfacc15);
+            shieldWireMat.color.setHex(0xfef08a);
+            shieldDisplay.textContent = `INVULN ${state.shieldInvulnTimer.toFixed(1)}s`;
+            shieldDisplay.style.color = "#facc15";
+            shieldDisplay.style.textShadow = "0 0 12px rgba(250, 204, 21, 0.9)";
+            shieldHudBox.classList.remove('shield-active');
+            shieldHudBox.classList.add('shield-invuln');
+        } else if (state.hasShield) {
+            shieldBubble.visible = true;
+            shieldBubbleMat.color.setHex(0x00f3ff);
+            shieldWireMat.color.setHex(0x7dd3fc);
+            shieldDisplay.textContent = "ACTIVE";
+            shieldDisplay.style.color = "#00f3ff";
+            shieldDisplay.style.textShadow = "0 0 12px rgba(0, 243, 255, 0.9)";
+            shieldHudBox.classList.remove('shield-invuln');
+            shieldHudBox.classList.add('shield-active');
+        } else {
+            shieldBubble.visible = false;
+            shieldDisplay.textContent = "OFF";
+            shieldDisplay.style.color = "#64748b";
+            shieldDisplay.style.textShadow = "none";
+            shieldHudBox.classList.remove('shield-active');
+            shieldHudBox.classList.remove('shield-invuln');
+        }
+    }
+
+    function createShieldPickup(x, z) {
+        const pickupGroup = new THREE.Group();
+
+        const core = new THREE.Mesh(SHARED_PICKUP_CORE_GEO, pickupCoreMat);
+        pickupGroup.add(core);
+
+        const shell = new THREE.Mesh(SHARED_PICKUP_SHELL_GEO, pickupShellMat);
+        pickupGroup.add(shell);
+
+        const ring1 = new THREE.Mesh(SHARED_PICKUP_RING1_GEO, pickupRingMat);
+        ring1.rotation.x = Math.PI / 3;
+        pickupGroup.add(ring1);
+
+        const ring2 = new THREE.Mesh(SHARED_PICKUP_RING2_GEO, pickupRingMat);
+        ring2.rotation.y = Math.PI / 3;
+        pickupGroup.add(ring2);
+
+        const beacon = new THREE.Mesh(SHARED_PICKUP_BEACON_GEO, pickupShadowMat);
+        beacon.position.y = CONFIG.groundY - CONFIG.baseAltitude + 0.04;
+        pickupGroup.add(beacon);
+
+        pickupGroup.position.set(x, CONFIG.baseAltitude, z);
+        pickupGroup.userData.core = core;
+        pickupGroup.userData.ring1 = ring1;
+        pickupGroup.userData.ring2 = ring2;
+
+        scene.add(pickupGroup);
+        shieldPickups.push(pickupGroup);
+        state.lastShieldX = x;
+    }
+
+    function clearShieldPickups() {
+        for (let p of shieldPickups) {
+            scene.remove(p);
+        }
+        shieldPickups = [];
+    }
+
+    // --- Colossal (3x Scaled) Static & Regional Moving Planetary Rock Obstacles (Cached Geometries for High FPS) ---
+    const OBSTACLE_SIZE_MULTIPLIER = 3.0;
+    let obstacles = [];
+    const rockMaterials = [
+        unifiedStoneMaterial
+    ];
+
+    const rockEdgeMaterial = new THREE.LineBasicMaterial({ color: 0x202530, transparent: true, opacity: 0.35 });
+    const movingHazardEdgeMat = new THREE.LineBasicMaterial({ color: 0x00f3ff, transparent: true, opacity: 0.65 });
+    const baseShadowMat = new THREE.MeshBasicMaterial({ color: 0x181c24, transparent: true, opacity: 0.35 });
+
+    function getRegionIndexForDistance(forwardDist) {
+        return Math.max(0, Math.floor(forwardDist / CONFIG.regionLength));
+    }
+
+    function getRegionConfigForDistance(forwardDist) {
+        const regionNum = getRegionIndexForDistance(forwardDist);
+        return MAP_REGIONS[regionNum % MAP_REGIONS.length];
+    }
+
+    function rollRegionObstacleScale(regionConfig) {
+        return regionConfig.sizeMin + Math.random() * (regionConfig.sizeMax - regionConfig.sizeMin);
+    }
+
+    function roughenGeometry(geo, amountX, amountY, amountZ) {
+        const pos = geo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const vx = pos.getX(i);
+            const vy = pos.getY(i);
+            const vz = pos.getZ(i);
+            const heightFactor = vy > 0 ? 1.0 : 0.35;
+            const noise = Math.sin(vx * 0.6 + vz * 0.8) * Math.cos(vy * 0.65 - vx * 0.4);
+            pos.setXYZ(
+                i,
+                vx + noise * amountX * heightFactor,
+                vy + Math.abs(noise) * amountY * heightFactor,
+                vz + noise * amountZ * heightFactor
+            );
+        }
+        geo.computeVertexNormals();
+        return geo;
+    }
+
+    // Checks if an obstacle at (x, z) lies inside the flight corridor behind any active launch ramp
+    function isInsideRampFlightZone(x, z) {
+        for (let r = 0; r < launchRamps.length; r++) {
+            const ramp = launchRamps[r];
+            const zFront = ramp.position.z + ramp.userData.halfLength + 40;
+            const zBack = ramp.position.z - ramp.userData.halfLength - 360;
+            if (z <= zFront && z >= zBack && Math.abs(x - ramp.position.x) < 62.0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Ensures navigable clearance scaled dynamically to obstacle size so clusters look dense yet stay dodgeable
+    function isTooCloseToExisting(x, z, minClearanceX = 36, minClearanceZ = 42) {
+        if (isInsideRampFlightZone(x, z)) return true;
+
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            const obs = obstacles[i];
+            if (obs.position.z > -320) break;
+            const dx = Math.abs(obs.position.x - x);
+            const dz = Math.abs(obs.position.z - z);
+            if (dx < minClearanceX && dz < minClearanceZ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function attachRockDetails(targetMesh, radiusX, radiusZ, topClearanceY, baseShadowRadius, groundY, cachedEdgeGeo = null, edgeMatOverride = null) {
+        const activeEdgeMat = edgeMatOverride || rockEdgeMaterial;
+        if (cachedEdgeGeo) {
+            targetMesh.add(new THREE.LineSegments(cachedEdgeGeo, activeEdgeMat));
+        } else if (targetMesh.geometry) {
+            const edges = new THREE.EdgesGeometry(targetMesh.geometry, 24);
+            const edgeSeg = new THREE.LineSegments(edges, activeEdgeMat);
+            edgeSeg.userData.customGeo = true;
+            targetMesh.add(edgeSeg);
+        }
+
+        const contactShadow = new THREE.Mesh(SHARED_CONTACT_SHADOW_GEO, baseShadowMat);
+        const invScaleX = targetMesh.scale.x || 1;
+        const invScaleY = targetMesh.scale.y || 1;
+        const invScaleZ = targetMesh.scale.z || 1;
+        contactShadow.scale.set(baseShadowRadius / invScaleX, baseShadowRadius / invScaleZ, 1);
+        contactShadow.position.set(0, (groundY + 0.05 - targetMesh.position.y) / invScaleY, 0);
+        targetMesh.add(contactShadow);
+
+        targetMesh.userData.radiusX = radiusX;
+        targetMesh.userData.radiusZ = radiusZ;
+        targetMesh.userData.topClearanceY = topClearanceY;
+
+        scene.add(targetMesh);
+        obstacles.push(targetMesh);
+    }
+
+    function createSingleObstacle(x, z, regionConfig, requestedKind = null, customScale = null, skipProximityCheck = false) {
+        if (isInsideRampFlightZone(x, z)) return;
+
+        const chosenScale = customScale !== null ? customScale : rollRegionObstacleScale(regionConfig);
+        const clearX = Math.max(16, 36 * chosenScale);
+        const clearZ = Math.max(18, 42 * chosenScale);
+
+        if (!skipProximityCheck && isTooCloseToExisting(x, z, clearX, clearZ)) return;
+
+        const kind = requestedKind || regionConfig.designs[Math.floor(Math.random() * regionConfig.designs.length)];
+        const mat = rockMaterials[0];
+
+        const scale = chosenScale * OBSTACLE_SIZE_MULTIPLIER;
+        const groundY = sampleGroundHeight(x, z - state.worldDistanceZ) - 1.2;
+
+        if (kind === 'slidingMonolith') {
+            const sx = (0.85 + Math.random() * 0.3) * scale;
+            const sy = (0.85 + Math.random() * 0.3) * scale;
+            const sz = (0.85 + Math.random() * 0.3) * scale;
+            const height = 15.5 * sy;
+            const mesh = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.slidingMonolith, mat);
+            mesh.scale.set(sx, sy, sz);
+            mesh.position.set(x, groundY + height * 0.45, z);
+            mesh.userData.moveType = 'slideX';
+            mesh.userData.anchorX = x;
+            mesh.userData.moveAmp = 20.0 + Math.random() * 10.0;
+            mesh.userData.moveFreq = 1.15 + Math.random() * 0.45;
+            mesh.userData.movePhase = Math.random() * Math.PI * 2;
+            attachRockDetails(mesh, 1.95 * sx, 1.7 * sz, groundY + height * 0.92, 3.6 * Math.max(sx, sz), groundY, CACHED_OBSTACLE_EDGES.slidingMonolith, movingHazardEdgeMat);
+
+        } else if (kind === 'risingPillar') {
+            const sx = (0.85 + Math.random() * 0.3) * scale;
+            const sy = (0.85 + Math.random() * 0.3) * scale;
+            const height = 16.5 * sy;
+            const mesh = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.risingPillar, mat);
+            mesh.scale.set(sx, sy, sx);
+            const baseCenterY = groundY + height * 0.25;
+            mesh.position.set(x, baseCenterY, z);
+            mesh.userData.moveType = 'pumpY';
+            mesh.userData.baseY = baseCenterY;
+            mesh.userData.halfHeight = height * 0.48;
+            mesh.userData.moveAmp = 8.5 * scale;
+            mesh.userData.moveFreq = 1.5 + Math.random() * 0.5;
+            mesh.userData.movePhase = Math.random() * Math.PI * 2;
+            attachRockDetails(mesh, 2.3 * sx, 2.3 * sx, baseCenterY + height * 0.48, 4.2 * sx, groundY, CACHED_OBSTACLE_EDGES.risingPillar, movingHazardEdgeMat);
+
+        } else if (kind === 'orbitingBoulder') {
+            const s = (0.85 + Math.random() * 0.3) * scale;
+            const mesh = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.orbitingBoulder, mat);
+            mesh.scale.set(s, s, s);
+            const hoverY = CONFIG.baseAltitude + 2.5;
+            mesh.position.set(x, hoverY, z);
+            mesh.userData.moveType = 'orbitHover';
+            mesh.userData.anchorX = x;
+            mesh.userData.baseY = hoverY;
+            mesh.userData.moveAmp = 16.0 + Math.random() * 8.0;
+            mesh.userData.moveFreq = 1.35 + Math.random() * 0.4;
+            mesh.userData.movePhase = Math.random() * Math.PI * 2;
+            attachRockDetails(mesh, 2.8 * s, 2.8 * s, hoverY + 3.1 * s, 4.2 * s, groundY, CACHED_OBSTACLE_EDGES.orbitingBoulder, movingHazardEdgeMat);
+
+        } else if (kind === 'spire') {
+            const sr = (0.82 + Math.random() * 0.36) * scale;
+            const sh = (0.80 + Math.random() * 0.42) * scale;
+            const height = 16.5 * sh;
+            const mesh = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.spire, mat);
+            mesh.scale.set(sr, sh, sr);
+            mesh.rotation.y = Math.random() * Math.PI * 2;
+            mesh.position.set(x, groundY + height * 0.46, z);
+            attachRockDetails(mesh, 1.9 * sr, 1.9 * sr, groundY + height * 0.88, 3.8 * sr, groundY, CACHED_OBSTACLE_EDGES.spire);
+
+        } else if (kind === 'needle') {
+            const sr = (0.82 + Math.random() * 0.35) * scale;
+            const sh = (0.84 + Math.random() * 0.38) * scale;
+            const height = 22.0 * sh;
+            const mesh = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.needle, mat);
+            mesh.scale.set(sr, sh, sr);
+            mesh.rotation.y = Math.random() * Math.PI * 2;
+            mesh.position.set(x, groundY + height * 0.47, z);
+            attachRockDetails(mesh, 1.3 * sr, 1.3 * sr, groundY + height * 0.90, 2.8 * sr, groundY, CACHED_OBSTACLE_EDGES.needle);
+
+        } else if (kind === 'twinSpire') {
+            const group = new THREE.Group();
+            const sr = (0.85 + Math.random() * 0.3) * scale;
+            const sh = (0.85 + Math.random() * 0.32) * scale;
+            const h1 = 16.5 * sh;
+
+            const m1 = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.spire, mat);
+            m1.scale.set(sr * 0.85, sh, sr * 0.85);
+            m1.position.set(-1.3 * sr, h1 * 0.46, 0);
+            m1.add(new THREE.LineSegments(CACHED_OBSTACLE_EDGES.spire, rockEdgeMaterial));
+            group.add(m1);
+
+            const h2 = h1 * 0.74;
+            const m2 = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.spire, mat);
+            m2.scale.set(sr * 0.68, sh * 0.74, sr * 0.68);
+            m2.rotation.y = 1.4;
+            m2.position.set(1.5 * sr, h2 * 0.45, 0.6 * sr);
+            m2.add(new THREE.LineSegments(CACHED_OBSTACLE_EDGES.spire, rockEdgeMaterial));
+            group.add(m2);
+
+            group.position.set(x, groundY, z);
+            attachRockDetails(group, 2.8 * sr, 2.1 * sr, groundY + h1 * 0.88, 4.2 * sr, groundY);
+
+        } else if (kind === 'mesa') {
+            const sr = (0.82 + Math.random() * 0.36) * scale;
+            const sh = (0.80 + Math.random() * 0.42) * scale;
+            const height = 12.0 * sh;
+            const mesh = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.mesa, mat);
+            mesh.scale.set(sr, sh, sr);
+            mesh.rotation.y = Math.random() * Math.PI * 2;
+            mesh.position.set(x, groundY + height * 0.47, z);
+            attachRockDetails(mesh, 2.85 * sr, 2.85 * sr, groundY + height * 0.94, 5.1 * sr, groundY, CACHED_OBSTACLE_EDGES.mesa);
+
+        } else if (kind === 'steppedMesa') {
+            const group = new THREE.Group();
+            const sr = (0.95 + Math.random() * 0.3) * scale;
+            const sh = (0.85 + Math.random() * 0.35) * scale;
+            const h1 = 6.6 * sh;
+            const h2 = 6.0 * sh;
+
+            const m1 = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.mesa, mat);
+            m1.scale.set(sr * 1.15, sh * 0.55, sr * 1.15);
+            m1.position.set(0, h1 * 0.47, 0);
+            m1.add(new THREE.LineSegments(CACHED_OBSTACLE_EDGES.mesa, rockEdgeMaterial));
+            group.add(m1);
+
+            const m2 = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.mesa, mat);
+            m2.scale.set(sr * 0.82, sh * 0.50, sr * 0.82);
+            m2.rotation.y = 0.9;
+            m2.position.set(0.5 * sr, h1 * 0.85 + h2 * 0.45, -0.4 * sr);
+            m2.add(new THREE.LineSegments(CACHED_OBSTACLE_EDGES.mesa, rockEdgeMaterial));
+            group.add(m2);
+
+            group.position.set(x, groundY, z);
+            attachRockDetails(group, 3.3 * sr, 3.3 * sr, groundY + (h1 * 0.85 + h2 * 0.9), 5.6 * sr, groundY);
+
+        } else if (kind === 'ridge') {
+            const sx = (0.82 + Math.random() * 0.4) * scale;
+            const sy = (0.80 + Math.random() * 0.4) * scale;
+            const sz = (0.85 + Math.random() * 0.35) * scale;
+            const height = 6.0 * sy;
+            const mesh = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.ridge, mat);
+            mesh.scale.set(sx, sy, sz);
+            mesh.position.set(x, groundY + height * 0.44, z);
+            attachRockDetails(mesh, 3.7 * sx, 1.85 * sz, groundY + height * 0.92, 5.6 * Math.max(sx, sz), groundY, CACHED_OBSTACLE_EDGES.ridge);
+
+        } else if (kind === 'monolith') {
+            const sx = (0.82 + Math.random() * 0.36) * scale;
+            const sy = (0.82 + Math.random() * 0.42) * scale;
+            const sz = (0.82 + Math.random() * 0.36) * scale;
+            const height = 16.5 * sy;
+            const mesh = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.monolith, mat);
+            mesh.scale.set(sx, sy, sz);
+            mesh.rotation.y = Math.random() * Math.PI;
+            mesh.rotation.z = (Math.random() - 0.5) * 0.24;
+            mesh.position.set(x, groundY + height * 0.45, z);
+            attachRockDetails(mesh, 1.75 * sx, 1.55 * sz, groundY + height * 0.92, 3.2 * Math.max(sx, sz), groundY, CACHED_OBSTACLE_EDGES.monolith);
+
+        } else if (kind === 'arch') {
+            const group = new THREE.Group();
+            const pillarHalfSpan = 6.2 * scale;
+            const pillarRad = 1.9 * scale;
+            const pillarH = 12.8 * scale;
+
+            [-1, 1].forEach((side) => {
+                const pillar = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.risingPillar, mat);
+                pillar.scale.set(0.62 * scale, 0.78 * scale, 0.62 * scale);
+                pillar.position.set(side * pillarHalfSpan, pillarH * 0.47, 0);
+                pillar.add(new THREE.LineSegments(CACHED_OBSTACLE_EDGES.risingPillar, rockEdgeMaterial));
+                group.add(pillar);
+            });
+
+            const spanWidth = pillarHalfSpan * 2 + pillarRad * 2.4;
+            const lintel = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.ridge, mat);
+            lintel.scale.set(spanWidth / 8.2, (3.2 * scale) / 6.0, (3.6 * scale) / 4.0);
+            lintel.position.set(0, pillarH * 0.92, 0);
+            lintel.add(new THREE.LineSegments(CACHED_OBSTACLE_EDGES.ridge, rockEdgeMaterial));
+            group.add(lintel);
+
+            group.position.set(x, groundY, z);
+            [-1, 1].forEach((side) => {
+                const cShadow = new THREE.Mesh(SHARED_CONTACT_SHADOW_GEO, baseShadowMat);
+                cShadow.scale.set(pillarRad * 1.5, pillarRad * 1.5, 1);
+                cShadow.position.set(side * pillarHalfSpan, 0.05, 0);
+                group.add(cShadow);
+            });
+
+            group.userData.isArch = true;
+            group.userData.pillarOffset = pillarHalfSpan;
+            group.userData.radiusX = pillarRad * 0.85;
+            group.userData.radiusZ = pillarRad * 0.85;
+            group.userData.topClearanceY = groundY + pillarH + 2.5 * scale;
+
+            scene.add(group);
+            obstacles.push(group);
+
+        } else {
+            // 'crag'
+            const s = (0.82 + Math.random() * 0.42) * scale;
+            const size = 4.1 * s;
+            const mesh = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.crag, mat);
+            mesh.scale.set(s, s * (0.85 + Math.random() * 0.35), s);
+            mesh.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
+            mesh.position.set(x, groundY + size * 0.45, z);
+            attachRockDetails(mesh, size * 0.82, size * 0.82, groundY + size * 1.35, size * 1.25, groundY, CACHED_OBSTACLE_EDGES.crag);
+        }
+    }
+
+    // Picks a lateral coordinate intentionally offset away from a reference X so items never spawn in a straight line
+    function pickOffsetLateralX(referenceX, minOffset, maxOffset) {
+        const dir = Math.random() < 0.5 ? -1 : 1;
+        return referenceX + dir * (minOffset + Math.random() * (maxOffset - minOffset));
+    }
+
+    function generateProceduralWave(zOverride = null) {
+        state.waveCount++;
+        state.wavesSinceShield++;
+        state.wavesSinceRamp++;
+        const centerX = state.shipX;
+        const zBase = zOverride !== null ? zOverride : CONFIG.spawnDistance;
+
+        const waveForwardDist = state.worldDistanceZ + Math.abs(zBase);
+        const spawnRegion = getRegionConfigForDistance(waveForwardDist);
+
+        // Zigzag the navigable lane left and right so you never fly down a long straight corridor
+        if (Math.random() < 0.42) {
+            state.corridorSwingDir *= -1;
+        }
+        state.corridorAnchorX += state.corridorSwingDir * (28 + Math.random() * 26);
+        if (Math.abs(state.corridorAnchorX - centerX) > 105) {
+            state.corridorSwingDir = state.corridorAnchorX > centerX ? -1 : 1;
+            state.corridorAnchorX = centerX + state.corridorSwingDir * (45 + Math.random() * 35);
+        }
+
+        // Launch Ramps are 5x rarer (minimum 115 waves cooldown + 3% spawn chance) and always offset left/right away from straight lines
+        let spawnedRampThisWave = false;
+        if (zOverride === null && state.wavesSinceRamp >= 115 && Math.random() < 0.03) {
+            const baseRefX = state.lastRampX !== null ? state.lastRampX : centerX;
+            const rampX = pickOffsetLateralX(baseRefX, 65, 145);
+            if (!isTooCloseToExisting(rampX, zBase, 75, 95)) {
+                createLaunchRamp(rampX, zBase);
+                state.wavesSinceRamp = 0;
+                spawnedRampThisWave = true;
+
+                if (Math.random() < 0.65) {
+                    const lowRidgeX = rampX + (Math.random() - 0.5) * 14;
+                    const lowRidgeZ = zBase - 145;
+                    const groundY = sampleGroundHeight(lowRidgeX, lowRidgeZ - state.worldDistanceZ) - 1.2;
+                    const mesh = new THREE.Mesh(CACHED_OBSTACLE_SHAPES.ridge, rockMaterials[0]);
+                    mesh.scale.set(2.6, 1.75, 2.75);
+                    mesh.position.set(lowRidgeX, groundY + 10.5 * 0.44, lowRidgeZ);
+                    attachRockDetails(mesh, 22.0 * 0.46, 11.0 * 0.46, groundY + 10.5 * 0.90, 22.0 * 0.72, groundY, CACHED_OBSTACLE_EDGES.ridge);
+                }
+            }
+        }
+
+        // Force Left/Right Evasion: Periodically drop a prominent blocker directly along your current flight line (shipX)
+        // with staggered flanking formations so you must actively steer left or right around it
+        if (!spawnedRampThisWave && state.waveCount % 2 === 1) {
+            const directBlockerX = centerX + (Math.random() - 0.5) * 12;
+            createSingleObstacle(directBlockerX, zBase - 12, spawnRegion, null, null, true);
+
+            const dodgeSide = Math.random() < 0.5 ? -1 : 1;
+            const secondStaggerX = directBlockerX + dodgeSide * (36 + Math.random() * 14);
+            createSingleObstacle(secondStaggerX, zBase - 58, spawnRegion, null, null);
+        }
+
+        const pattern = spawnRegion.pattern;
+        const density = spawnRegion.densityMult;
+
+        // 1. Tightly Clustered Multi-Pod Formations (Groups of 3-5 rocks clustered together across the horizon)
+        if (pattern === "cluster") {
+            const podCount = Math.max(4, Math.round(5 * density));
+            for (let p = 0; p < podCount; p++) {
+                const podCenterX = centerX + (Math.random() * 2 - 1) * CONFIG.spawnHorizon;
+                const podCenterZ = zBase + (Math.random() - 0.5) * 95;
+                if (Math.abs(podCenterX - state.corridorAnchorX) < 34.0) continue;
+
+                const members = spawnRegion.clusterCount + Math.floor(Math.random() * 2);
+                for (let m = 0; m < members; m++) {
+                    const mx = podCenterX + (Math.random() - 0.5) * spawnRegion.clusterSpread * 2;
+                    const mz = podCenterZ + (Math.random() - 0.5) * spawnRegion.clusterSpread * 2;
+                    if (Math.abs(mx - state.corridorAnchorX) < 28.0) continue;
+                    createSingleObstacle(mx, mz, spawnRegion, null, null);
+                }
+            }
+        }
+        // 2. Dense Small-Boulder Swarm (High count of closely packed obstacles with clear weaving channels)
+        else if (pattern === "swarm") {
+            const count = Math.round(13 * density + Math.min(5, state.speed / 70));
+            for (let i = 0; i < count; i++) {
+                const candidateX = centerX + (Math.random() * 2 - 1) * CONFIG.spawnHorizon;
+                if (Math.abs(candidateX - state.corridorAnchorX) < 28.0) continue;
+                const zOffset = (Math.random() - 0.5) * 105;
+                createSingleObstacle(candidateX, zBase + zOffset, spawnRegion, null, null);
+            }
+        }
+        // 3. Sparse Colossal Giants (Fewer, massive formations widely spaced across the horizon)
+        else if (pattern === "sparseGiants") {
+            const count = Math.max(3, Math.round(4 * density));
+            for (let i = 0; i < count; i++) {
+                const candidateX = centerX + (Math.random() * 2 - 1) * CONFIG.spawnHorizon;
+                if (Math.abs(candidateX - state.corridorAnchorX) < 54.0) continue;
+                const zOffset = (Math.random() - 0.5) * 85;
+                createSingleObstacle(candidateX, zBase + zOffset, spawnRegion, null, null);
+            }
+        }
+        // 4. Clustered Twin Mega-Formation Gate (Offset from shipX so you have to steer into the gate)
+        else if (pattern === "gauntlet") {
+            const gapWidth = Math.max(34.0, 42.0 - (state.speed / CONFIG.baseSpeed) * 0.8);
+            const gateCenter = Math.abs(state.corridorAnchorX - centerX) < 24
+                ? pickOffsetLateralX(centerX, 34, 68)
+                : state.corridorAnchorX;
+            createSingleObstacle(gateCenter - gapWidth / 2 - 20.0, zBase, spawnRegion, null, null, true);
+            createSingleObstacle(gateCenter + gapWidth / 2 + 20.0, zBase, spawnRegion, null, null, true);
+
+            const wingCount = Math.max(2, Math.round(4 * density));
+            for (let w = 0; w < wingCount; w++) {
+                const side = w % 2 === 0 ? -1 : 1;
+                const span = 65 + Math.floor(w / 2) * 75 + Math.random() * 35;
+                createSingleObstacle(gateCenter + side * (gapWidth / 2 + span), zBase + (Math.random() - 0.5) * 65, spawnRegion, null, null);
+            }
+        }
+        // 5. Dense Diagonal Slalom Chevron + Flanking Clusters
+        else if (pattern === "slalom") {
+            const dir = Math.random() < 0.5 ? 1 : -1;
+            const startX = centerX + (dir * 42);
+            const steps = Math.max(3, Math.min(5, Math.round(3.5 * density)));
+            for (let i = 0; i < steps; i++) {
+                createSingleObstacle(
+                    startX - i * 42.0 * dir,
+                    zBase - i * 62.0,
+                    spawnRegion,
+                    null,
+                    null,
+                    true
+                );
+            }
+            const scatterCount = Math.round(6 * density);
+            for (let j = 0; j < scatterCount; j++) {
+                const scatterX = centerX + (Math.random() * 2 - 1) * CONFIG.spawnHorizon;
+                if (Math.abs(scatterX - state.corridorAnchorX) > 65) {
+                    createSingleObstacle(scatterX, zBase - Math.random() * 85, spawnRegion, null, null);
+                }
+            }
+        }
+        // 6. Clustered Spire Canyon & Regional Field
+        else {
+            const count = Math.max(5, Math.round(8 * density + Math.min(4, state.speed / 75)));
+            for (let i = 0; i < count; i++) {
+                const candidateX = centerX + (Math.random() * 2 - 1) * CONFIG.spawnHorizon;
+                if (Math.abs(candidateX - state.corridorAnchorX) < 32.0) continue;
+
+                const zOffset = (Math.random() - 0.5) * 90;
+                createSingleObstacle(candidateX, zBase + zOffset, spawnRegion, null, null);
+            }
+        }
+
+        // Moving Hazards spawn ONLY in regions where hasMovingObstacles is true
+        if (!spawnedRampThisWave && spawnRegion.hasMovingObstacles && spawnRegion.movingDesigns.length > 0 && state.waveCount % 2 === 0) {
+            const chosenMoving = spawnRegion.movingDesigns[Math.floor(Math.random() * spawnRegion.movingDesigns.length)];
+            const sideSign = Math.random() < 0.5 ? -1 : 1;
+            const hazardX = state.corridorAnchorX + sideSign * (48 + Math.random() * 44);
+            if (!isTooCloseToExisting(hazardX, zBase - 34, 48, 56)) {
+                createSingleObstacle(hazardX, zBase - 34, spawnRegion, chosenMoving, 0.92, true);
+            }
+        }
+
+        // Energy Shield Pickup Spawn: becomes more common once speed reaches 5.5x or higher
+        const currentSpeedMult = state.speed / CONFIG.baseSpeed;
+        const isHighSpeed = currentSpeedMult >= 5.5;
+        const shieldWaveCooldown = isHighSpeed ? 14 : 28;
+        const shieldSpawnChance = isHighSpeed ? 0.22 : 0.08;
+
+        if (zOverride === null && state.wavesSinceShield >= shieldWaveCooldown && Math.random() < shieldSpawnChance) {
+            const shieldRefX = state.lastShieldX !== null ? state.lastShieldX : centerX;
+            const shieldX = pickOffsetLateralX(shieldRefX, 45, 115);
+            if (!isTooCloseToExisting(shieldX, zBase - 18, 36, 45)) {
+                createShieldPickup(shieldX, zBase - 18);
+                state.wavesSinceShield = 0;
+            }
+        }
+    }
+
+    function formatRegionBadge(regionNum) {
+        return `R-${String(regionNum + 1).padStart(2, '0')}`;
+    }
+
+    function showBanner(text) {
+        sectorBanner.textContent = text;
+        sectorBanner.style.opacity = '1';
+
+        if (state.bannerTimeout) clearTimeout(state.bannerTimeout);
+        state.bannerTimeout = setTimeout(() => {
+            sectorBanner.style.opacity = '0';
+        }, 2600);
+    }
+
+    function showRegionBanner(regionNum, regionName) {
+        const badge = formatRegionBadge(regionNum);
+        sectorDisplay.textContent = badge;
+        showBanner(`REGION ${String(regionNum + 1).padStart(2, '0')}: ${regionName}`);
+    }
+
+    const targetSkyColor = new THREE.Color(MAP_REGIONS[0].sky);
+    const targetFogColor = new THREE.Color(MAP_REGIONS[0].fog);
+    const targetGroundColor = new THREE.Color(MAP_REGIONS[0].groundColor);
+
+    function updateForwardRegion(dt, instant = false) {
+        const regionNum = getRegionIndexForDistance(state.worldDistanceZ);
+        const region = getRegionConfigForDistance(state.worldDistanceZ);
+
+        if (regionNum !== state.currentRegionNum) {
+            state.currentRegionNum = regionNum;
+            targetSkyColor.setHex(region.sky);
+            targetFogColor.setHex(region.fog);
+            targetGroundColor.setHex(region.groundColor);
+            showRegionBanner(regionNum, region.name);
+        }
+
+        if (instant) {
+            scene.background.copy(targetSkyColor);
+            scene.fog.color.copy(targetFogColor);
+            unifiedStoneMaterial.color.copy(targetGroundColor);
+        } else {
+            const blend = 1 - Math.exp(-2.2 * dt);
+            scene.background.lerp(targetSkyColor, blend);
+            scene.fog.color.lerp(targetFogColor, blend);
+            unifiedStoneMaterial.color.lerp(targetGroundColor, blend);
+        }
+    }
+
+    function clearObstacles() {
+        for (let obs of obstacles) {
+            scene.remove(obs);
+        }
+        obstacles = [];
+    }
+
+    // --- Game Flow Control ---
+    function startGame() {
+        clearObstacles();
+        clearShieldPickups();
+        clearLaunchRamps();
+        clearGroundTerrainDetails();
+        state.isPlaying = true;
+        state.score = 0;
+        state.speed = CONFIG.baseSpeed;
+        state.worldDistanceZ = 0;
+        state.spawnTimer = 0;
+        state.terrainSpawnTimer = 0;
+        state.waveCount = 0;
+        state.wavesSinceShield = 12;
+        state.wavesSinceRamp = 45;
+        state.lastRampX = null;
+        state.lastShieldX = null;
+        state.shieldInvulnTimer = 0;
+        setShieldActive(false);
+        state.currentRegionNum = 0;
+        state.shipX = 0;
+        state.shipY = CONFIG.baseAltitude;
+        state.shipVelX = 0;
+        state.shipVelY = 0;
+        state.shipRoll = 0;
+        state.shipPitch = 0;
+        state.isAirborne = false;
+        state.cameraLean = 0;
+        state.cameraShake = 0;
+        state.corridorAnchorX = 0;
+        state.corridorSwingDir = Math.random() < 0.5 ? -1 : 1;
+        state.moveLeft = false;
+        state.moveRight = false;
+
+        targetSkyColor.setHex(MAP_REGIONS[0].sky);
+        targetFogColor.setHex(MAP_REGIONS[0].fog);
+        targetGroundColor.setHex(MAP_REGIONS[0].groundColor);
+        updateForwardRegion(0.1, true);
+        showRegionBanner(0, MAP_REGIONS[0].name);
+
+        shipGroup.position.set(0, CONFIG.baseAltitude, 2);
+        shipGroup.rotation.set(0, 0, 0);
+        groundPlane.position.x = 0;
+        groundTexture.offset.set(0, 0);
+        syncGroundVerticesToWorld();
+        shipGroundShadow.position.set(0, sampleGroundHeight(0, 2) + 0.08, 2);
+        shipGroundShadow.scale.set(0.85, 0.85, 1);
+        shadowMat.opacity = 0.36;
+        skyGroup.position.x = 0;
+        camera.position.set(0, CONFIG.baseAltitude + 5.2, 11.5);
+        camera.rotation.set(-0.17, 0, 0);
+
+        // Pre-seed static multi-sized rocky ground features across the landscape
+        for (let tZ = -120; tZ >= CONFIG.spawnDistance; tZ -= 65) {
+            spawnGroundTerrainCluster(tZ);
+        }
+
+        // Pre-seed clustered obstacle waves across the deep horizon at launch
+        for (let preZ = -240; preZ >= CONFIG.spawnDistance; preZ -= 120) {
+            generateProceduralWave(preZ);
+        }
+
+        startScreen.classList.add('hidden');
+        gameoverScreen.classList.add('hidden');
+    }
+
+    function absorbImpactWithShield(obstacleIndex) {
+        const hitObs = obstacles[obstacleIndex];
+        if (hitObs) {
+            scene.remove(hitObs);
+            obstacles.splice(obstacleIndex, 1);
+        }
+        state.hasShield = false;
+        state.shieldInvulnTimer = 3.0; // 3 full seconds of invulnerability after crashing with a shield
+        updateShieldVisualAndHUD();
+        state.cameraShake = 0.55;
+        showBanner("SHIELD IMPACT! 3.0s INVULNERABILITY");
+    }
+
+    function triggerGameOver() {
+        state.isPlaying = false;
+        state.cameraShake = 0.85;
+
+        const finalScoreInt = Math.floor(state.score);
+        if (finalScoreInt > state.highScore) {
+            state.highScore = finalScoreInt;
+            localStorage.setItem('neonVoidHighScore', state.highScore);
+            bestDisplay.textContent = state.highScore;
+        }
+
+        finalScoreEl.textContent = finalScoreInt;
+        finalSectorEl.textContent = formatRegionBadge(state.currentRegionNum);
+        finalSpeedEl.textContent = (state.speed / CONFIG.baseSpeed).toFixed(1) + 'x';
+        finalBestEl.textContent = state.highScore;
+
+        gameoverScreen.classList.remove('hidden');
+    }
+
+    // --- Input Handling (Keyboard, On-Screen Buttons, & Left/Right Half Screen Tap-and-Hold) ---
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') state.moveLeft = true;
+        if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') state.moveRight = true;
+        if (e.key === 'Enter' && !state.isPlaying) startGame();
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') state.moveLeft = false;
+        if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') state.moveRight = false;
+    });
+
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+
+    let buttonLeftHeld = false;
+    let buttonRightHeld = false;
+    let pointerSideDir = 0; // -1 for left half of screen, +1 for right half of screen
+
+    function syncSteerInputs() {
+        state.moveLeft = buttonLeftHeld || pointerSideDir === -1;
+        state.moveRight = buttonRightHeld || pointerSideDir === 1;
+    }
+
+    const bindTouchButton = (btn, isLeft) => {
+        const setHeld = (val) => {
+            if (isLeft) buttonLeftHeld = val;
+            else buttonRightHeld = val;
+            syncSteerInputs();
+        };
+        btn.addEventListener('touchstart', (e) => { e.preventDefault(); setHeld(true); }, { passive: false });
+        btn.addEventListener('touchend', (e) => { e.preventDefault(); setHeld(false); });
+        btn.addEventListener('touchcancel', (e) => { e.preventDefault(); setHeld(false); });
+        btn.addEventListener('mousedown', (e) => { e.stopPropagation(); setHeld(true); });
+        btn.addEventListener('mouseup', (e) => { e.stopPropagation(); setHeld(false); });
+        btn.addEventListener('mouseleave', () => { setHeld(false); });
+    };
+    bindTouchButton(btnLeft, true);
+    bindTouchButton(btnRight, false);
+
+    function updateSteerFromScreenX(clientX) {
+        pointerSideDir = clientX < window.innerWidth * 0.5 ? -1 : 1;
+        syncSteerInputs();
+    }
+
+    function clearScreenSteer() {
+        pointerSideDir = 0;
+        syncSteerInputs();
+    }
+
+    // Touching or clicking anywhere on the left half of the screen moves left; right half moves right
+    container.addEventListener('touchstart', (e) => {
+        if (e.target.closest('button') || !state.isPlaying) return;
+        const activeTouch = e.touches[e.touches.length - 1];
+        if (activeTouch) {
+            updateSteerFromScreenX(activeTouch.clientX);
+        }
+    }, { passive: true });
+
+    container.addEventListener('touchmove', (e) => {
+        if (e.target.closest('button') || !state.isPlaying) return;
+        const activeTouch = e.touches[e.touches.length - 1];
+        if (activeTouch) {
+            updateSteerFromScreenX(activeTouch.clientX);
+        }
+    }, { passive: true });
+
+    container.addEventListener('touchend', (e) => {
+        if (e.touches.length === 0) {
+            clearScreenSteer();
+        } else {
+            const remainingTouch = e.touches[e.touches.length - 1];
+            updateSteerFromScreenX(remainingTouch.clientX);
+        }
+    });
+
+    container.addEventListener('touchcancel', clearScreenSteer);
+
+    let isMouseDownOnScreen = false;
+    container.addEventListener('mousedown', (e) => {
+        if (e.target.closest('button') || !state.isPlaying) return;
+        isMouseDownOnScreen = true;
+        updateSteerFromScreenX(e.clientX);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isMouseDownOnScreen || !state.isPlaying) return;
+        updateSteerFromScreenX(e.clientX);
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (isMouseDownOnScreen) {
+            isMouseDownOnScreen = false;
+            clearScreenSteer();
+        }
+    });
+
+    document.getElementById('start-btn').addEventListener('click', startGame);
+    document.getElementById('restart-btn').addEventListener('click', startGame);
+
+    // --- Responsive Resize ---
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // --- Main Animation & Physics Loop ---
+    let lastTime = performance.now();
+
+    function animate(now) {
+        requestAnimationFrame(animate);
+
+        const dt = Math.min((now - lastTime) / 1000, 0.1);
+        lastTime = now;
+        const timeSec = now * 0.001;
+
+        // Animate dual afterburner plumes
+        const flameFlicker = 0.85 + Math.random() * 0.45;
+        for (let i = 0; i < engineFlames.length; i++) {
+            engineFlames[i].scale.set(1, 1, flameFlicker);
+            plasmaCores[i].scale.set(1, 1, 0.75 + Math.random() * 0.35);
+        }
+
+        // Update 3-second post-crash shield invulnerability timer & bubble visual pulse
+        if (state.shieldInvulnTimer > 0) {
+            state.shieldInvulnTimer = Math.max(0, state.shieldInvulnTimer - dt);
+            updateShieldVisualAndHUD();
+            const fastPulse = 0.5 + 0.5 * Math.sin(now * 0.025);
+            shieldBubbleMat.opacity = 0.12 + fastPulse * 0.24;
+            shieldWireMat.opacity = 0.30 + fastPulse * 0.55;
+            shieldBubble.rotation.y += 3.5 * dt;
+        } else if (state.hasShield) {
+            shieldBubbleMat.opacity = 0.18 + Math.sin(now * 0.008) * 0.06;
+            shieldWireMat.opacity = 0.42 + Math.cos(now * 0.01) * 0.15;
+            shieldBubble.rotation.y = Math.sin(now * 0.003) * 0.12;
+        }
+
+        const activeSpeed = state.isPlaying ? state.speed : 24;
+
+        // Track exact forward distance so ground UVs, static terrain vertices, and obstacle Z positions stay locked 1:1
+        state.worldDistanceZ += activeSpeed * dt;
+        groundTexture.offset.y = state.worldDistanceZ / GROUND_TILE_WORLD_SIZE;
+        groundTexture.offset.x = state.shipX / GROUND_TILE_WORLD_SIZE;
+
+        if (state.isPlaying) {
+            // 1. Fast Initial Acceleration (1.0x -> 3.0x in ~12s), Then Gradual Climb (3.0x -> 6.0x)
+            const currentMultiplier = state.speed / CONFIG.baseSpeed;
+            const currentAccel = currentMultiplier < 3.0 ? CONFIG.fastAcceleration : CONFIG.slowAcceleration;
+            state.speed = Math.min(CONFIG.maxSpeed, state.speed + currentAccel * dt);
+            const speedMultiplier = state.speed / CONFIG.baseSpeed;
+            state.score += state.speed * dt * 0.5;
+
+            scoreDisplay.textContent = Math.floor(state.score);
+            speedDisplay.textContent = speedMultiplier.toFixed(1) + 'x';
+
+            // 2. Smooth Endless Left/Right Movement (Ship banks, nose stays pointed straight ahead)
+            let moveDir = 0;
+            if (state.moveLeft) moveDir -= 1;
+            if (state.moveRight) moveDir += 1;
+
+            if (moveDir !== 0) {
+                const reversing = (moveDir > 0 && state.shipVelX < 0) || (moveDir < 0 && state.shipVelX > 0);
+                const accel = reversing ? CONFIG.shipAccel * 1.9 : CONFIG.shipAccel;
+                state.shipVelX += moveDir * accel * dt;
+                state.shipVelX = Math.max(-CONFIG.shipMaxStrafe, Math.min(CONFIG.shipMaxStrafe, state.shipVelX));
+            } else {
+                state.shipVelX *= Math.exp(-CONFIG.shipDrag * dt);
+                if (Math.abs(state.shipVelX) < 0.05) state.shipVelX = 0;
+            }
+
+            state.shipX += state.shipVelX * dt;
+            shipGroup.position.x = state.shipX;
+            shipGroundShadow.position.x = state.shipX;
+            groundPlane.position.x = state.shipX;
+            skyGroup.position.x = state.shipX;
+            sunLight.position.x = state.shipX + 60;
+
+            // Re-sync ground horizontal UV and check sequential forward region progression
+            groundTexture.offset.x = state.shipX / GROUND_TILE_WORLD_SIZE;
+            updateForwardRegion(dt);
+
+            // 3. Continuously Spawn & Move Static Multi-Sized Gray Ground Rocks
+            state.terrainSpawnTimer -= dt;
+            if (state.terrainSpawnTimer <= 0) {
+                spawnGroundTerrainCluster(CONFIG.spawnDistance);
+                state.terrainSpawnTimer = 0.95 / Math.pow(speedMultiplier, 0.45);
+            }
+
+            for (let t = groundTerrainDetails.length - 1; t >= 0; t--) {
+                const feat = groundTerrainDetails[t];
+                feat.position.z += state.speed * dt;
+                if (feat.position.z > CONFIG.despawnDistance || Math.abs(feat.position.x - state.shipX) > 680) {
+                    scene.remove(feat);
+                    groundTerrainDetails.splice(t, 1);
+                }
+            }
+
+            // 4. Swept High-Speed Launch Ramp Detection & Vertical Airtime Jump Physics
+            let rampFloorY = CONFIG.baseAltitude;
+            const frameTravelZ = state.speed * dt;
+
+            for (let r = launchRamps.length - 1; r >= 0; r--) {
+                const ramp = launchRamps[r];
+                const prevRampZ = ramp.position.z;
+                ramp.position.z += frameTravelZ;
+
+                const rdx = Math.abs(ramp.position.x - shipGroup.position.x);
+                const halfLen = ramp.userData.halfLength;
+                const rampFrontZ = ramp.position.z + halfLen;
+                const rampBackZ = ramp.position.z - halfLen;
+                const prevRampBackZ = prevRampZ - halfLen;
+
+                if (rdx < ramp.userData.halfWidth) {
+                    if (shipGroup.position.z <= rampFrontZ && shipGroup.position.z >= rampBackZ) {
+                        const progress = Math.max(0, Math.min(1, (rampFrontZ - shipGroup.position.z) / (halfLen * 2)));
+                        const deckWorldY = CONFIG.groundY + progress * ramp.userData.rampTotalHeight + 0.6;
+                        if (deckWorldY > rampFloorY) {
+                            rampFloorY = deckWorldY;
+                        }
+
+                        if (!ramp.userData.triggered && progress > 0.55) {
+                            ramp.userData.triggered = true;
+                            const launchBoost = 42.0 + speedMultiplier * 4.5;
+                            state.shipVelY = Math.max(state.shipVelY, launchBoost);
+                            state.shipY = Math.max(state.shipY, deckWorldY + 0.5);
+                            state.isAirborne = true;
+                            state.score += 250;
+                            showBanner("MEGA RAMP LAUNCH! +250");
+                        }
+                    } else if (!ramp.userData.triggered && prevRampBackZ <= shipGroup.position.z && rampBackZ > shipGroup.position.z) {
+                        ramp.userData.triggered = true;
+                        const peakDeckY = CONFIG.groundY + ramp.userData.rampTotalHeight + 0.8;
+                        const launchBoost = 42.0 + speedMultiplier * 4.5;
+                        state.shipY = Math.max(state.shipY, peakDeckY);
+                        state.shipVelY = Math.max(state.shipVelY, launchBoost);
+                        state.isAirborne = true;
+                        state.score += 250;
+                        showBanner("MEGA RAMP LAUNCH! +250");
+                    }
+                }
+
+                if (ramp.position.z > CONFIG.despawnDistance || Math.abs(ramp.position.x - state.shipX) > 650) {
+                    disposeMeshGroup(ramp);
+                    scene.remove(ramp);
+                    launchRamps.splice(r, 1);
+                }
+            }
+
+            // Integrate vertical gravity & altitude relative to elevated cruising altitude
+            if (state.shipY > rampFloorY || state.shipVelY > 0) {
+                state.shipY += state.shipVelY * dt;
+                state.shipVelY -= CONFIG.gravity * dt;
+
+                if (state.shipY <= rampFloorY) {
+                    state.shipY = rampFloorY;
+                    if (state.isAirborne && state.shipVelY < -8) {
+                        state.cameraShake = 0.28;
+                    }
+                    state.shipVelY = 0;
+                    state.isAirborne = rampFloorY > CONFIG.baseAltitude + 0.3;
+                }
+            } else {
+                state.shipY = rampFloorY;
+                state.shipVelY = 0;
+            }
+
+            // Pure banking roll + dynamic nose pitch up/down during ramp airtime + wing aileron deflection
+            const velRatio = state.shipVelX / CONFIG.shipMaxStrafe;
+            const targetRoll = -velRatio * 0.65;
+            const lerpFactor = 1 - Math.exp(-15 * dt);
+
+            state.shipRoll += (targetRoll - state.shipRoll) * lerpFactor;
+            shipGroup.rotation.z = state.shipRoll;
+            shipGroup.rotation.y = 0;
+
+            const extraAir = state.shipY - CONFIG.baseAltitude;
+            const targetPitch = extraAir > 0.05
+                ? Math.max(-0.42, Math.min(0.52, state.shipVelY * 0.015))
+                : Math.sin(now * 0.006) * 0.02;
+            state.shipPitch += (targetPitch - state.shipPitch) * (1 - Math.exp(-12 * dt));
+            shipGroup.rotation.x = state.shipPitch;
+
+            const hoverBob = extraAir > 0.05 ? 0 : Math.sin(now * 0.007) * 0.14;
+            shipGroup.position.y = state.shipY + hoverBob;
+
+            // Deflect left/right wing ailerons opposite to each other during rolls
+            for (let f = 0; f < aileronFlaps.length; f++) {
+                const flap = aileronFlaps[f];
+                flap.rotation.x = flap.userData.side * state.shipRoll * 0.65;
+            }
+
+            // Dynamic FOV warp effect scaled smoothly up to 6.0x speed + extra FOV rush when airborne
+            const targetFov = 64 + (speedMultiplier - 1) * 5.2 + (extraAir > 1 ? 5 : 0);
+            camera.fov += (targetFov - camera.fov) * 4 * dt;
+            camera.updateProjectionMatrix();
+
+            // 5. Procedural Map Generation scaled by upcoming horizon region's spawn rate
+            state.spawnTimer -= dt;
+            if (state.spawnTimer <= 0) {
+                const horizonRegion = getRegionConfigForDistance(state.worldDistanceZ + Math.abs(CONFIG.spawnDistance));
+                generateProceduralWave();
+                state.spawnTimer = (CONFIG.baseSpawnInterval / horizonRegion.spawnRateMult) / Math.pow(speedMultiplier, 0.58);
+            }
+
+            // 6. Update Enlarged Shield Pickups & Check Generous Collection Hitbox
+            for (let p = shieldPickups.length - 1; p >= 0; p--) {
+                const pickup = shieldPickups[p];
+                pickup.position.z += state.speed * dt;
+                pickup.position.y = CONFIG.baseAltitude + 0.35 + Math.sin(now * 0.006 + p) * 0.25;
+                pickup.userData.core.rotation.y += 2.6 * dt;
+                pickup.userData.ring1.rotation.z += 2.2 * dt;
+                pickup.userData.ring2.rotation.x += 2.4 * dt;
+
+                const pdx = Math.abs(pickup.position.x - shipGroup.position.x);
+                const pdz = Math.abs(pickup.position.z - shipGroup.position.z);
+                const pdy = Math.abs(pickup.position.y - shipGroup.position.y);
+
+                if (pdx < 5.6 && pdz < 6.4 && pdy < 6.0) {
+                    scene.remove(pickup);
+                    shieldPickups.splice(p, 1);
+                    if (!state.hasShield) {
+                        setShieldActive(true);
+                        showBanner("ENERGY SHIELD EQUIPPED!");
+                    } else {
+                        state.score += 150;
+                        showBanner("SHIELD CHARGED (+150 BONUS)");
+                    }
+                    continue;
+                }
+
+                if (pickup.position.z > CONFIG.despawnDistance || Math.abs(pickup.position.x - state.shipX) > 650) {
+                    scene.remove(pickup);
+                    shieldPickups.splice(p, 1);
+                }
+            }
+
+            // 7. Update Static & Moving Planetary Obstacles & Check 3D Collisions (Including 3s Shield Invulnerability)
+            const shipHitboxX = 0.85;
+            const shipHitboxZ = 1.1;
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.position.z += state.speed * dt;
+
+                // Animate moving obstacles in regions that include them
+                if (obs.userData.moveType === 'slideX') {
+                    obs.position.x = obs.userData.anchorX + Math.sin(timeSec * obs.userData.moveFreq + obs.userData.movePhase) * obs.userData.moveAmp;
+                } else if (obs.userData.moveType === 'pumpY') {
+                    obs.position.y = obs.userData.baseY + Math.sin(timeSec * obs.userData.moveFreq + obs.userData.movePhase) * obs.userData.moveAmp;
+                    obs.userData.topClearanceY = obs.position.y + obs.userData.halfHeight;
+                } else if (obs.userData.moveType === 'orbitHover') {
+                    const phase = timeSec * obs.userData.moveFreq + obs.userData.movePhase;
+                    obs.position.x = obs.userData.anchorX + Math.cos(phase) * obs.userData.moveAmp;
+                    obs.position.y = obs.userData.baseY + Math.sin(phase * 1.5) * 3.8;
+                    obs.rotation.y += 1.2 * dt;
+                    obs.rotation.x += 0.7 * dt;
+                    obs.userData.topClearanceY = obs.position.y + obs.userData.radiusX;
+                }
+
+                let collided = false;
+                const dz = Math.abs(obs.position.z - shipGroup.position.z);
+                if (dz < (obs.userData.radiusZ + shipHitboxZ) && shipGroup.position.y < obs.userData.topClearanceY) {
+                    if (obs.userData.isArch) {
+                        const leftPillarX = obs.position.x - obs.userData.pillarOffset;
+                        const rightPillarX = obs.position.x + obs.userData.pillarOffset;
+                        const hitLeft = Math.abs(leftPillarX - shipGroup.position.x) < (obs.userData.radiusX + shipHitboxX);
+                        const hitRight = Math.abs(rightPillarX - shipGroup.position.x) < (obs.userData.radiusX + shipHitboxX);
+                        if (hitLeft || hitRight) {
+                            collided = true;
+                        }
+                    } else {
+                        const dx = Math.abs(obs.position.x - shipGroup.position.x);
+                        if (dx < (obs.userData.radiusX + shipHitboxX)) {
+                            collided = true;
+                        }
+                    }
+                }
+
+                if (collided) {
+                    if (state.shieldInvulnTimer > 0) {
+                        // Smash cleanly through any additional obstacles during the 3-second post-crash invulnerability window
+                        scene.remove(obs);
+                        obstacles.splice(i, 1);
+                        state.cameraShake = Math.max(state.cameraShake, 0.25);
+                        continue;
+                    } else if (state.hasShield) {
+                        absorbImpactWithShield(i);
+                        continue;
+                    } else {
+                        triggerGameOver();
+                        break;
+                    }
+                }
+
+                if (obs.position.z > CONFIG.despawnDistance || Math.abs(obs.position.x - state.shipX) > 650) {
+                    scene.remove(obs);
+                    obstacles.splice(i, 1);
+                }
+            }
+        }
+
+        // Sync static 3D planetary ground mesh vertices 1:1 with world travel & track ship ground shadow
+        syncGroundVerticesToWorld();
+        const localFloorY = sampleGroundHeight(state.shipX, 2 - state.worldDistanceZ);
+        shipGroundShadow.position.y = localFloorY + 0.12;
+        const heightAboveGround = Math.max(0, state.shipY - localFloorY);
+        const airRatio = Math.min(1, heightAboveGround / 55);
+        const shadowScale = 1 - airRatio * 0.72;
+        shipGroundShadow.scale.set(shadowScale, shadowScale, 1);
+        shadowMat.opacity = 0.44 * (1 - airRatio * 0.75);
+
+        // Camera tracks ship's elevated cruising height and jump altitude while leaning left/right
+        const camLerp = 1 - Math.exp(-14 * dt);
+        const velRatio = state.shipVelX / CONFIG.shipMaxStrafe;
+        const targetCameraLean = -velRatio * 0.14;
+        state.cameraLean += (targetCameraLean - state.cameraLean) * camLerp;
+
+        const targetCamY = state.shipY + 5.2;
+        if (state.cameraShake > 0) {
+            camera.position.x = state.shipX + (Math.random() - 0.5) * state.cameraShake;
+            camera.position.y = targetCamY + (Math.random() - 0.5) * state.cameraShake;
+            state.cameraShake = Math.max(0, state.cameraShake - dt * 2.5);
+        } else {
+            camera.position.x = state.shipX;
+            camera.position.y += (targetCamY - camera.position.y) * camLerp;
+        }
+        camera.rotation.x = -0.17 + Math.min(0.12, (state.shipY - CONFIG.baseAltitude) * 0.004);
+        camera.rotation.y = 0;
+        camera.rotation.z = state.cameraLean;
+
+        renderer.render(scene, camera);
+    }
+
+    window.onload = function () {
+        animate(performance.now());
+    };
+</script>
+</body>
+</html>
